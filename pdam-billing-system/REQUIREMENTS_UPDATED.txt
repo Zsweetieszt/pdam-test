@@ -1,0 +1,557 @@
+Dokumen Analisis Kebutuhan Aplikasi Penagihan Piutang PDAM
+
+Struktur DB:
+https://dbdiagram.io/d/68938b65dd90d17865c3296d 
+
+1. Batasan (Constraints)
+(Berlaku untuk sistem secara keseluruhan)
+[C-1]  Aplikasi tidak memproses transaksi keuangan secara langsung, hanya mencatat dan melacak pembayaran.
+[C-2]  Hanya Admin yang dapat melakukan manajemen pengguna dan verifikasi data pelanggan.
+[C-3]  Hanya Admin yang dapat mengelola data master seperti tarif air dan template notifikasi.
+[C-4]  Hanya Admin yang dapat mengelola konten global (FAQ, Pengaturan Umum, Template WhatsApp).
+[C-5]  Hanya Admin yang dapat meninjau dan mengelola audit logs sistem
+[C-6]  Verifikasi data pelanggan wajib menggunakan dokumen KTP dan data meter air.
+[C-7]  Notifikasi dilakukan via link WhatsApp yang dapat di-copy atau di-klik untuk membuka WhatsApp
+[C-8]  Empat peran pengguna: Admin, Keuangan, Customer, dan Manajemen
+[C-9]  Notifikasi tagihan hanya dapat digenerate pada tagihan dengan status 'pending' atau 'overdue'.
+[C-10]  Tagihan yang sudah dibayar tidak dapat diubah status pembayarannya.
+[C-11]  Kalkulasi tagihan berdasarkan pemakaian m3 dan tarif yang berlaku.
+[C-12]  Database: MariaDB.
+[C-13]  Autentikasi: Laravel Sanctum dengan API token authentication.
+[C-14]  Aturan password: minimum 8 karakter, kombinasi huruf besar, kecil, dan angka.
+[C-15]  Nomor telepon harus unik dalam sistem dan digunakan untuk autentikasi.
+[C-16]  Avatar menggunakan inisial nama atau foto yang diupload.
+[C-17]  Nama file unggahan di-hash atau di-generate secara acak untuk keamanan.
+[C-18]  Sesi otomatis berakhir setelah 2 jam tidak aktif.
+[C-19]  Notifikasi tagihan hanya dapat digenerate oleh role Keuangan.
+[C-20]  Role Manajemen hanya dapat melihat laporan dan analisis, tidak dapat melakukan transaksi.
+[C-21]  Sistem mendukung multiple meter per customer dengan billing per meter.
+[C-22]  Setiap meter memiliki golongan tarif sendiri yang dapat berbeda antar meter.
+[C-23]  Perhitungan tarif menggunakan sistem progressive block rate sesuai Kepbup.
+[C-24]  Admin customer registration menggunakan requirement yang sama dengan self-registration.
+[C-25]  Terdapat 20 customer groups berdasarkan Kepbup dengan tarif akurat.
+[C-26]  Terdapat 7 ukuran meter dengan biaya administrasi berbeda.
+[C-27]  Perhitungan tarif harus sesuai dengan contoh di tirtaraharja.co.id (2R1 30m³ = Rp 258.500).
+
+2. Asumsi (Assumptions)
+(Berlaku untuk sistem secara keseluruhan)
+[A-1]  Password di-hash menggunakan metode bcrypt untuk keamanan.
+[A-2]  created_at dan updated_at dikelola otomatis oleh Eloquent ORM Laravel.
+[A-3]  Penyimpanan file menggunakan Laravel Storage dengan path yang di-hash.
+[A-4]  Pembacaan meter dilakukan secara manual dan diinput ke sistem.
+[A-5]  Tarif air berubah berdasarkan kebijakan PDAM dan diupdate oleh Admin.
+[A-6]  Sistem dapat menangani multiple periode tagihan secara bersamaan
+[A-7]  Backup database dilakukan secara manual oleh Admin.
+[A-8]  Penyimpanan file menggunakan Laravel Storage dengan path yang di-hash.
+[A-9]  Pembacaan meter dilakukan secara manual dan diinput ke sistem.
+[A-10]  Tarif air berubah berdasarkan kebijakan PDAM dan diupdate oleh Admin.
+[A-11]  Sistem dapat menangani multiple periode tagihan secara bersamaan.
+[A-12]  Backup database dilakukan secara manual oleh Admin.
+[A-13]  Setiap customer dapat memiliki multiple meter dengan tarif berbeda.
+[A-14]  Billing dilakukan per meter, bukan per customer.
+[A-15]  Progressive block rate dihitung berdasarkan pemakaian per meter per bulan.
+[A-16]  Data tarif 20 customer groups dan 7 meter sizes diseed saat instalasi.
+
+3. Kebutuhan Fungsional (Functional Requirements)
+3.1 Kebutuhan Front-end (Client-Side)
+[REQ-F-1] Antarmuka Pengguna dan Autentikasi 
+ [REQ-F-1.1]  Aplikasi dapat menampilkan form login dengan validasi input di sisi klien untuk nomor telepon dan password.  *Cek: [C-15], [C-16]*
+ [REQ-F-1.2]  Aplikasi dapat menampilkan form registrasi pelanggan baru dengan validasi data KTP dan informasi meter. *Cek: [C-6]*
+ [REQ-F-1.3]  Aplikasi dapat menampilkan pesan error yang diterima dari back-end jika autentikasi gagal.
+ [REQ-F-1.4]  Aplikasi dapat menampilkan antarmuka untuk proses reset password melalui verifikasi WhatsApp.
+ [REQ-F-1.5]  Aplikasi dapat menampilkan form registrasi dengan multiple meter support. *Cek: [C-21]*
+  [REQ-F-2] Antarmuka Manajemen Profil Pengguna 
+ [REQ-F-2.1]  Aplikasi dapat menampilkan halaman profil pengguna dengan foto yang diambil dari Gravatar. *Cek: [C-17]*
+ [REQ-F-2.2]  Aplikasi dapat menyediakan form edit profil untuk mengubah informasi personal dan kontak.
+ [REQ-F-2.3]  Aplikasi dapat menampilkan riwayat aktivitas pengguna dalam sistem.
+  [REQ-F-3] Antarmuka Manajemen Data Pelanggan 
+ [REQ-F-3.1]  Aplikasi dapat menampilkan daftar pelanggan dengan fitur pencarian berdasarkan nomor pelanggan, nama, atau nomor meter.
+ [REQ-F-3.2]  Aplikasi dapat menampilkan form untuk menambah/mengedit data pelanggan baru beserta informasi meter air.
+ [REQ-F-3.3]  Aplikasi dapat menampilkan detail profil pelanggan lengkap dengan riwayat tagihan dan pembayaran.
+ [REQ-F-3.4]  Aplikasi dapat menampilkan interface untuk manajemen multiple meter per customer. *Cek: [C-21]*
+ [REQ-F-3.5]  Aplikasi dapat menampilkan dropdown 20 customer groups untuk setiap meter. *Cek: [C-25]*
+ [REQ-F-3.6]  Aplikasi dapat menampilkan dropdown 7 ukuran meter dengan preview biaya admin. *Cek: [C-26]*
+  [REQ-F-4] Antarmuka Manajemen Tagihan 
+ [REQ-F-4.1]  Aplikasi dapat menampilkan halaman daftar tagihan dengan filter berdasarkan periode, status, dan pelanggan.
+ [REQ-F-4.2]  Aplikasi dapat menampilkan form input pembacaan meter untuk generate tagihan baru.
+ [REQ-F-4.3]  Aplikasi dapat menampilkan detail tagihan lengkap dengan breakdown biaya dan riwayat pembayaran.
+ [REQ-F-4.4]  Aplikasi dapat menampilkan tombol aksi untuk mengubah status tagihan (pending, sent, paid, overdue, cancelled).
+ [REQ-F-4.5]  Aplikasi dapat menampilkan tagihan per meter dengan breakdown progressive block rate. *Cek: [C-23]*
+ [REQ-F-4.6]  Aplikasi dapat menampilkan outstanding bills per meter, bukan per customer. *Cek: [C-22]*
+  [REQ-F-5] Antarmuka Link WhatsApp 
+ [REQ-F-5.1]  Aplikasi dapat menampilkan tombol "Generate Link WhatsApp" pada setiap tagihan untuk role Keuangan. *Cek: [C-19]*
+ [REQ-F-5.2]  Aplikasi dapat menampilkan modal dengan link WhatsApp dan tombol copy/buka WhatsApp.
+ [REQ-F-5.3]  Aplikasi dapat menampilkan template pesan tagihan yang dapat di-customize.
+  [REQ-F-6] Antarmuka Manajemen Pembayaran 
+ [REQ-F-6.1]  Aplikasi dapat menampilkan form input pembayaran dengan validasi jumlah dan metode pembayaran.
+ [REQ-F-6.2]  Aplikasi dapat menampilkan konfirmasi pembayaran sebelum menyimpan data.
+ [REQ-F-6.3]  Aplikasi dapat menampilkan riwayat pembayaran pelanggan dengan detail transaksi.
+ [REQ-F-6.4]  Aplikasi dapat menampilkan pembayaran per meter dengan agregasi per customer. *Cek: [C-21]*
+  [REQ-F-7] Antarmuka Laporan dan Dashboard 
+ [REQ-F-7.1]  Aplikasi dapat menampilkan dashboard dengan statistik tagihan, pembayaran, dan tunggakan.
+ [REQ-F-7.2]  Aplikasi dapat menampilkan grafik pemakaian air dan trend pembayaran.
+ [REQ-F-7.3]  Aplikasi dapat menampilkan laporan dalam bentuk tabel yang dapat diekspor ke PDF atau Excel.
+ [REQ-F-7.4]  Aplikasi dapat menampilkan analytics per meter dan agregasi per customer. *Cek: [C-21]*
+  [REQ-F-8] Antarmuka Manajemen Template 
+ [REQ-F-8.1]  Aplikasi dapat menampilkan halaman CRUD untuk template notifikasi WhatsApp. *Cek: [C-4]*
+ [REQ-F-8.2]  Aplikasi dapat menyediakan editor template dengan variabel dinamis (customer_name, amount, due_date, dll).
+ [REQ-F-8.3]  Aplikasi dapat menampilkan preview template dengan data sample.
+  [REQ-F-9] Antarmuka Manajemen Admin 
+ [REQ-F-9.1]  Aplikasi dapat menampilkan dashboard admin dengan visualisasi data sistem dan aktivitas pengguna.
+ [REQ-F-9.2]  Aplikasi dapat menampilkan halaman CRUD untuk manajemen pengguna dan role. *Cek: [C-2]*
+ [REQ-F-9.3]  Aplikasi dapat menampilkan audit logs dengan filter berdasarkan pengguna, aksi, dan tanggal.
+  [REQ-F-10] Antarmuka Tampilan Data Dinamis (Data Tables) 
+ [REQ-F-10.1]  Aplikasi dapat menampilkan data dalam format tabel yang interaktif di berbagai halaman
+ [REQ-F-10.2]  Aplikasi dapat menyediakan fitur pencarian teks pada tabel untuk memfilter data secara real-time.
+ [REQ-F-10.3]  Aplikasi dapat menyediakan fitur pengurutan (sorting) data dengan mengklik header kolom.
+ [REQ-F-10.4]  Aplikasi dapat menampilkan kontrol paginasi dan pilihan jumlah data per halaman.
+  [REQ-F-11] Antarmuka Tariff Management 
+ [REQ-F-11.1]  Aplikasi dapat menampilkan kalkulator tarif real-time dengan 20 customer groups. *Cek: [C-25]*
+ [REQ-F-11.2]  Aplikasi dapat menampilkan simulasi progressive block rate calculation. *Cek: [C-23]*
+ [REQ-F-11.3]  Aplikasi dapat menampilkan preview biaya admin berdasarkan ukuran meter. *Cek: [C-26]*
+ [REQ-F-11.4]  Aplikasi dapat menampilkan breakdown perhitungan sesuai contoh tirtaraharja.co.id. *Cek: [C-27]*
+
+3.2 Kebutuhan Back-end (Server-Side / API)
+[REQ-B-1] API Pengguna dan Autentikasi 
+ [REQ-B-1.1]  Aplikasi dapat menyediakan API endpoint untuk registrasi pengguna baru dengan validasi keunikan nomor telepon. *Cek: [C-16]*
+ [REQ-B-1.2]  Aplikasi dapat menyediakan API endpoint untuk validasi kredensial login dan mengembalikan API token. *Cek: [C-13], [C-14]*
+ [REQ-B-1.3]  Aplikasi dapat menyediakan API endpoint untuk reset password melalui verifikasi WhatsApp.
+ [REQ-B-1.4]  Aplikasi dapat mengelola dan memvalidasi token pengguna dengan timeout otomatis. *Cek: [C-18]*
+  [REQ-B-2] API Manajemen Data Pelanggan 
+ [REQ-B-2.1]  Aplikasi dapat menyediakan API endpoint CRUD untuk data pelanggan dengan validasi data KTP. *Cek: [C-6]*
+ [REQ-B-2.2]  Aplikasi dapat menyediakan API endpoint untuk pencarian pelanggan berdasarkan multiple criteria.
+ [REQ-B-2.3]  Aplikasi dapat menyediakan API endpoint untuk validasi nomor meter yang unik.
+ [REQ-B-2.4]  Aplikasi dapat menyediakan API endpoint untuk multiple meter management per customer. *Cek: [C-21]*
+ [REQ-B-2.5]  Aplikasi dapat menyediakan API endpoint untuk admin customer registration dengan multiple meter. *Cek: [C-24]*
+  [REQ-B-3] API Manajemen Tagihan 
+ [REQ-B-3.1]  Aplikasi dapat menyediakan API endpoint untuk generate tagihan berdasarkan pembacaan meter dan tarif. *Cek: [C-11]*
+ [REQ-B-3.2]  Aplikasi dapat menyediakan API endpoint untuk mengubah status tagihan dengan validasi business rules. *Cek: [C-9], [C-10]*
+ [REQ-B-3.3]  Aplikasi dapat menyediakan API endpoint untuk mengambil daftar tagihan dengan filter dan pagination.
+ [REQ-B-3.4]  Aplikasi dapat menyediakan API endpoint untuk billing per meter dengan progressive block calculation. *Cek: [C-22], [C-23]*
+ [REQ-B-3.5]  Aplikasi dapat menyediakan API endpoint untuk outstanding bills per meter. *Cek: [C-22]*
+  [REQ-B-4] API Generate Link WhatsApp 
+ [REQ-B-4.1]  Aplikasi dapat menyediakan API endpoint untuk generate link WhatsApp dengan validasi role Keuangan. *Cek: [C-19]*
+ [REQ-B-4.2]  Aplikasi dapat menyediakan API endpoint untuk format pesan tagihan dengan template. *Cek: [C-7]*
+ [REQ-B-4.3]  Aplikasi dapat menyediakan API endpoint untuk menyimpan log generate link WhatsApp.
+  [REQ-B-5] API Manajemen Pembayaran 
+ [REQ-B-5.1]  Aplikasi dapat menyediakan API endpoint untuk input dan validasi pembayaran.
+ [REQ-B-5.2]  Aplikasi dapat menyediakan API endpoint untuk verifikasi pembayaran oleh staff keuangan.
+ [REQ-B-5.3]  Aplikasi dapat menyediakan API endpoint untuk mengambil riwayat pembayaran pelanggan.
+ [REQ-B-5.4]  Aplikasi dapat menyediakan API endpoint untuk payment per meter dengan aggregation. *Cek: [C-21]*
+  [REQ-B-6] API Template dan Konfigurasi 
+ [REQ-B-6.1]  Aplikasi dapat menyediakan API endpoint CRUD untuk template notifikasi WhatsApp. *Cek: [C-4]*
+ [REQ-B-6.2]  Aplikasi dapat menyediakan API endpoint untuk replace variabel dalam template dengan data real.
+ [REQ-B-6.3]  Aplikasi dapat menyediakan API endpoint untuk manajemen pengaturan sistem.
+  [REQ-B-7] API Laporan dan Dashboard 
+ [REQ-B-7.1]  Aplikasi dapat menyediakan API endpoint untuk data dashboard dengan agregasi statistik.
+ [REQ-B-7.2]  Aplikasi dapat menyediakan API endpoint untuk generate laporan dalam berbagai format.
+ [REQ-B-7.3]  Aplikasi dapat menyediakan API endpoint untuk export data ke PDF dan Excel.
+ [REQ-B-7.4]  Aplikasi dapat menyediakan API endpoint untuk analytics per meter dan customer aggregation. *Cek: [C-21]*
+  [REQ-B-8] API Manajemen Admin 
+ [REQ-B-8.1]  Aplikasi dapat menyediakan API endpoint yang terproteksi untuk manajemen pengguna. *Cek: [C-2]*
+ [REQ-B-8.2]  Aplikasi dapat menyediakan API endpoint untuk audit logs dengan filter dan pagination. *Cek: [C-5]*
+ [REQ-B-8.3]  Aplikasi dapat menyediakan API endpoint untuk backup dan restore data sistem.
+  [REQ-B-9] API File Management 
+ [REQ-B-9.1]  Aplikasi dapat menyediakan API endpoint untuk upload file dengan hashing nama file. *Cek: [C-17]*
+ [REQ-B-9.2]  Aplikasi dapat menyediakan API endpoint untuk validasi dan kompresi file yang diupload.
+  [REQ-B-10] API Tampilan Data Dinamis (Data Tables) 
+ [REQ-B-10.1]  Aplikasi dapat menyediakan API endpoint yang mampu menerima parameter query untuk pencarian, pengurutan, dan paginasi.
+ [REQ-B-10.2]  Aplikasi dapat mengembalikan data yang sudah diproses dalam format JSON dengan metadata pagination.
+  [REQ-B-11] API Tariff Management 
+ [REQ-B-11.1]  Aplikasi dapat menyediakan API endpoint untuk mendapatkan 20 customer groups dengan tarif akurat. *Cek: [C-25]*
+ [REQ-B-11.2]  Aplikasi dapat menyediakan API endpoint untuk mendapatkan 7 meter sizes dengan biaya admin. *Cek: [C-26]*
+ [REQ-B-11.3]  Aplikasi dapat menyediakan API endpoint untuk simulasi progressive block rate calculation. *Cek: [C-23]*
+ [REQ-B-11.4]  Aplikasi dapat menyediakan API endpoint untuk tariff calculation sesuai contoh tirtaraharja.co.id. *Cek: [C-27]*
+ [REQ-B-11.5]  Aplikasi dapat menyediakan API endpoint untuk admin tariff management. *Cek: [C-3]*
+
+4. Kebutuhan Non-Fungsional (Non-Functional Requirements)
+4.1 Keamanan (Security)
+ [REQ-NF-1]  Sistem harus mengenkripsi password menggunakan bcrypt dengan salt.
+ [REQ-NF-2]  Sistem harus mengimplementasikan token timeout setelah 2 jam tidak aktif.
+ [REQ-NF-3]  Sistem harus mencatat semua aktivitas penting dalam audit logs.
+ [REQ-NF-4]  Sistem harus memvalidasi input untuk mencegah SQL injection dan XSS.
+ 4.2 Performance
+ [REQ-NF-5]  Sistem harus dapat menangani minimal 1000 concurrent users.
+ [REQ-NF-6]  Response time API tidak boleh lebih dari 3 detik untuk query normal.
+ [REQ-NF-7]  Sistem harus dapat memproses pengiriman notifikasi WhatsApp secara batch.
+ [REQ-NF-8]  Progressive block rate calculation harus selesai dalam waktu < 1 detik.
+ 4.3 Reliability
+ [REQ-NF-9]  Sistem harus memiliki uptime minimal 99.5%.
+ [REQ-NF-10]  Sistem harus melakukan backup database otomatis setiap hari.
+ [REQ-NF-11]  Sistem harus dapat recovery dalam waktu maksimal 4 jam jika terjadi failure.
+ [REQ-NF-12]  Sistem harus konsisten dalam perhitungan tarif progressive block rate.
+ 4.4 Usability
+ [REQ-NF-13]  Interface harus responsive dan dapat diakses melalui mobile device.
+ [REQ-NF-14]  Sistem harus menyediakan panduan penggunaan untuk setiap fitur.
+ [REQ-NF-15]  Pesan error harus informatif dan mudah dipahami pengguna.
+ [REQ-NF-16]  Calculator tariff harus memberikan feedback real-time.
+
+struktur db:
+// SISTEM PENAGIHAN PDAM DENGAN MULTIPLE METER SUPPORT
+// Database Schema for dbdiagram.io
+// Use this at: https://dbdiagram.io/
+
+Project pdam_billing_system {
+  database_type: 'MariaDB'
+  Note: '''
+    # PDAM Billing System dengan Multiple Meter Support dan Progressive Block Rate
+    
+    This database schema supports:
+    - User management with role-based access (4 roles)
+    - Customer management with multiple water meters per customer
+    - Progressive block rate tariff calculation (20 customer groups)
+    - Meter-specific billing (billing per meter, not per customer)
+    - 7 meter sizes with different admin fees
+    - Payment tracking and verification per meter
+    - WhatsApp link generation (wa.me links)
+    - Audit logging and notification templates
+    
+    ## Roles:
+    - Admin: Full system access, user management, tariff management
+    - Keuangan: Billing, payment management + WhatsApp link generation
+    - Customer: Self-service portal for viewing bills and payments
+    - Manajemen: Reports and analytics (read-only)
+    
+    ## New Features:
+    - Multiple meters per customer with independent tariff groups
+    - Progressive block rate: Blok I (0-10m³), Blok II (11-20m³), Blok III (21-30m³), Blok IV (>30m³)
+    - 20 customer groups based on Kepbup: 1L1-1L4, 2R1-2R4, 3N1-3N4, 4K1-4K8
+    - 7 meter sizes: 1/2", 3/4", 1", 1.5", 2", 3", 4" with different admin fees
+    - Accurate calculation matching tirtaraharja.co.id example (2R1 30m³ = Rp 258,500)
+    - Billing per meter with customer aggregation
+    
+    ## Budget-friendly architecture:
+    - Single Laravel application with API-first approach
+    - WhatsApp integration via link generation instead of API
+    - 11 essential tables for enhanced functionality
+    - Support for 1000+ concurrent users
+  '''
+}
+
+// ============================================
+// CORE TABLES
+// ============================================
+
+Table roles {
+  id int [pk, increment]
+  name varchar(50) [unique, not null, note: 'admin, keuangan, customer, manajemen']
+  description text
+  created_at timestamp [default: `CURRENT_TIMESTAMP`]
+  updated_at timestamp [default: `CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP`]
+  
+  Note: 'User roles for authorization'
+}
+
+Table users {
+  id int [pk, increment]
+  role_id int [ref: > roles.id, not null]
+  email varchar(255) [null]
+  phone varchar(20) [unique, not null]
+  password_hash varchar(255) [not null]
+  name varchar(255) [not null]
+  is_active boolean [default: true]
+  phone_verified_at timestamp [null]
+  created_at timestamp [default: `CURRENT_TIMESTAMP`]
+  updated_at timestamp [default: `CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP`]
+  
+  Note: 'System users with role-based access using phone verification'
+}
+
+Table customers {
+  id int [pk, increment]
+  user_id int [ref: - users.id, not null, note: 'One-to-one with users table']
+  customer_number varchar(50) [unique, not null, note: 'PDAM customer number']
+  ktp_number varchar(20) [unique, not null, note: 'Indonesian ID number']
+  address text [not null]
+  created_at timestamp [default: `CURRENT_TIMESTAMP`]
+  updated_at timestamp [default: `CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP`]
+  
+  Note: 'PDAM water customers - tariff moved to meter level for multiple meter support'
+}
+
+// ============================================
+// NEW MASTER DATA TABLES
+// ============================================
+
+Table customer_groups {
+  id int [pk, increment]
+  code varchar(10) [unique, not null, note: '1L1, 1L2, 2R1, 2R2, 3N1, 4K1, etc. (20 groups total)']
+  name varchar(100) [not null, note: 'Sosial I, Rumah Tangga I, Niaga I, etc.']
+  category varchar(50) [not null, note: 'Sosial, Rumah Tangga, Niaga, Khusus']
+  description text
+  block1_rate decimal(10,2) [not null, note: 'Rate for 0-10 m³']
+  block2_rate decimal(10,2) [not null, note: 'Rate for 11-20 m³']
+  block3_rate decimal(10,2) [not null, note: 'Rate for 21-30 m³']
+  block4_rate decimal(10,2) [not null, note: 'Rate for >30 m³ (0 if not applicable)']
+  block1_limit int [default: 10, note: 'Block 1 limit in m³']
+  block2_limit int [default: 10, note: 'Block 2 limit in m³']
+  block3_limit int [default: 10, note: 'Block 3 limit in m³']
+  is_active boolean [default: true]
+  created_at timestamp [default: `CURRENT_TIMESTAMP`]
+  updated_at timestamp [default: `CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP`]
+  
+  Note: '20 customer groups with progressive block rates based on Kepbup'
+}
+
+Table meter_admin_fees {
+  id int [pk, increment]
+  meter_size varchar(10) [unique, not null, note: '1/2", 3/4", 1", 1.5", 2", 3", 4"']
+  admin_fee decimal(10,2) [not null, note: 'Monthly admin fee for this meter size']
+  description varchar(100) [note: 'DN15, DN20, DN25, etc.']
+  is_active boolean [default: true]
+  created_at timestamp [default: `CURRENT_TIMESTAMP`]
+  updated_at timestamp [default: `CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP`]
+  
+  Note: '7 meter sizes with different monthly admin fees'
+}
+
+// ============================================
+// ENHANCED METER TABLE
+// ============================================
+
+Table meters {
+  id int [pk, increment]
+  customer_id int [ref: > customers.id, not null]
+  meter_number varchar(50) [unique, not null]
+  customer_group_code varchar(10) [ref: > customer_groups.code, not null, note: 'Each meter has its own tariff group']
+  meter_size varchar(10) [ref: > meter_admin_fees.meter_size, not null, note: 'Meter size for admin fee calculation']
+  meter_type meter_type_enum [not null, note: 'analog or digital']
+  installation_date date [not null]
+  last_reading int [default: 0, note: 'Last recorded reading for next bill calculation']
+  is_active boolean [default: true]
+  created_at timestamp [default: `CURRENT_TIMESTAMP`]
+  updated_at timestamp [default: `CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP`]
+  
+  Note: 'Water meters with individual tariff groups - supports multiple meters per customer'
+}
+
+// ============================================
+// BILLING TABLES
+// ============================================
+
+Table billing_periods {
+  id int [pk, increment]
+  period_name varchar(50) [not null, note: 'e.g., "Januari 2024"']
+  period_year int [not null]
+  period_month int [not null]
+  start_date date [not null]
+  end_date date [not null]
+  due_date date [not null]
+  is_active boolean [default: true]
+  created_at timestamp [default: `CURRENT_TIMESTAMP`]
+  updated_at timestamp [default: `CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP`]
+  
+  indexes {
+    (period_year, period_month) [unique]
+  }
+  
+  Note: 'Monthly billing periods'
+}
+
+Table bills {
+  id int [pk, increment]
+  meter_id int [ref: > meters.id, not null, note: 'Billing per meter, not per customer']
+  billing_period_id int [ref: > billing_periods.id, not null]
+  bill_number varchar(50) [unique, not null]
+  previous_reading int [not null, default: 0]
+  current_reading int [not null]
+  usage_m3 int [note: 'Computed: current_reading - previous_reading (cubic meters)']
+  base_amount decimal(15,2) [not null, note: 'Water charge from progressive block calculation']
+  additional_charges decimal(15,2) [default: 0, note: 'Admin fee based on meter size']
+  tax_amount decimal(15,2) [default: 0]
+  total_amount decimal(15,2) [note: 'Computed: base_amount + additional_charges + tax_amount']
+  status bill_status_enum [default: 'unpaid']
+  issued_date date [not null]
+  due_date date [not null]
+  notes text [note: 'Optional billing notes']
+  created_at timestamp [default: `CURRENT_TIMESTAMP`]
+  updated_at timestamp [default: `CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP`]
+  
+  indexes {
+    (meter_id, billing_period_id) [unique, note: 'One bill per meter per period']
+    status
+    due_date
+  }
+  
+  Note: 'Monthly water bills with progressive block rate calculation per meter'
+}
+
+Table payments {
+  id int [pk, increment]
+  bill_id int [ref: > bills.id, not null]
+  payment_number varchar(50) [unique, not null]
+  payment_method payment_method_enum [not null]
+  amount decimal(15,2) [not null]
+  payment_date date [not null]
+  reference_number varchar(100) [note: 'Bank/payment gateway reference']
+  notes text
+  payment_proof_path varchar(255) [note: 'Path to uploaded payment proof']
+  status payment_status_enum [default: 'pending', note: 'pending, verified, rejected']
+  verification_notes text
+  created_by int [ref: > users.id, not null, note: 'User who created payment record']
+  verified_by int [ref: > users.id, note: 'Staff who verified payment']
+  verified_at timestamp [null]
+  created_at timestamp [default: `CURRENT_TIMESTAMP`]
+  updated_at timestamp [default: `CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP`]
+  
+  indexes {
+    payment_date
+    status
+    created_by
+    verified_by
+  }
+  
+  Note: 'Payment records for bills with verification workflow'
+}
+
+// ============================================
+// WHATSAPP INTEGRATION TABLES
+// ============================================
+
+Table notification_templates {
+  id int [pk, increment]
+  template_name varchar(100) [unique, not null]
+  template_type message_template_enum [not null]
+  subject varchar(255)
+  message_content text [not null, note: 'Template with {{variables}} for wa.me link generation']
+  variables json [note: 'Available variables: {{customer_name}}, {{amount}}, {{due_date}}, {{meter_number}}, etc.']
+  is_active boolean [default: true]
+  created_at timestamp [default: `CURRENT_TIMESTAMP`]
+  updated_at timestamp [default: `CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP`]
+  
+  Note: 'WhatsApp message templates for link generation with dynamic variables'
+}
+
+// ============================================
+// SYSTEM TABLES
+// ============================================
+
+Table audit_logs {
+  id int [pk, increment]
+  user_id int [ref: > users.id, note: 'User who performed action']
+  action varchar(100) [not null, note: 'CREATE, UPDATE, DELETE, LOGIN, GENERATE_WHATSAPP_LINK, etc.']
+  model varchar(50) [not null, note: 'Model name: Customer, Meter, Bill, Payment, etc.']
+  model_id int [note: 'ID of affected record']
+  changes json [note: 'Changes made to the record']
+  ip_address varchar(45)
+  user_agent text
+  created_at timestamp [default: `CURRENT_TIMESTAMP`]
+  
+  indexes {
+    (user_id, action)
+    (model, model_id)
+    created_at
+  }
+  
+  Note: 'Audit trail for all system activities including meter management and billing'
+}
+
+// ============================================
+// ENUMS
+// ============================================
+
+Enum meter_type_enum {
+  analog [note: 'Traditional analog water meter']
+  digital [note: 'Digital water meter with precise readings']
+}
+
+Enum bill_status_enum {
+  unpaid [note: 'Bill generated, ready for payment']
+  paid [note: 'Payment received and verified']
+  overdue [note: 'Past due date, payment not received']
+  cancelled [note: 'Bill cancelled']
+}
+
+Enum payment_method_enum {
+  transfer [note: 'Bank transfer']
+  cash [note: 'Cash payment at office']
+  online [note: 'Online payment gateway']
+  mobile_banking [note: 'Mobile banking app']
+}
+
+Enum payment_status_enum {
+  pending [note: 'Payment submitted, awaiting verification']
+  verified [note: 'Payment verified by staff']
+  rejected [note: 'Payment rejected']
+}
+
+Enum message_template_enum {
+  bill_reminder [note: 'Monthly water bill notification via WhatsApp link']
+  overdue_notice [note: 'Overdue payment warning via WhatsApp link']
+  payment_confirmation [note: 'Payment received confirmation']
+}
+
+// ============================================
+// SAMPLE DATA COMMENTS
+// ============================================
+
+/*
+Default Roles (4 roles maintained):
+- admin: Administrator dengan akses penuh sistem, manajemen user, dan tariff management
+- keuangan: Staff keuangan untuk penagihan, pembayaran + generate WhatsApp link
+- customer: Pelanggan PDAM untuk self-service portal (multiple meter support)
+- manajemen: Manajemen untuk laporan dan analisis (read-only)
+
+Customer Groups (20 groups based on Kepbup):
+Sosial (4 groups):
+- 1L1: Sosial I (Rp 1.800, 2.100, 2.400, 2.700)
+- 1L2: Sosial II (Rp 1.900, 2.200, 2.500, 2.800)
+- 1L3: Sosial III (Rp 2.000, 2.300, 2.600, 2.900)
+- 1L4: Sosial IV (Rp 2.100, 2.400, 2.700, 3.000)
+
+Rumah Tangga (4 groups):
+- 2R1: Rumah Tangga I (Rp 7.100, 8.500, 9.500, 0) *matches tirtaraharja.co.id example*
+- 2R2: Rumah Tangga II (Rp 7.500, 9.000, 10.000, 0)
+- 2R3: Rumah Tangga III (Rp 8.000, 9.500, 10.500, 0)
+- 2R4: Rumah Tangga IV (Rp 8.500, 10.000, 11.000, 0)
+
+Niaga (4 groups):
+- 3N1: Niaga I (Rp 12.500, 14.000, 15.500, 0)
+- 3N2: Niaga II (Rp 13.500, 15.000, 16.500, 0)
+- 3N3: Niaga III (Rp 14.500, 16.000, 17.500, 0)
+- 3N4: Niaga IV (Rp 15.500, 17.000, 18.500, 0)
+
+Khusus (8 groups):
+- 4K1: Khusus I (Rp 18.000, 20.000, 22.000, 0)
+- 4K2: Khusus II (Rp 19.000, 21.000, 23.000, 0)
+- 4K3: Khusus III (Rp 20.000, 22.000, 24.000, 0)
+- 4K4: Khusus IV (Rp 21.000, 23.000, 25.000, 0)
+- 4K5: Khusus V (Rp 22.000, 24.000, 26.000, 0)
+- 4K6: Khusus VI (Rp 23.000, 25.000, 27.000, 0)
+- 4K7: Khusus VII (Rp 24.000, 26.000, 28.000, 0)
+- 4K8: Khusus VIII (Rp 25.000, 27.000, 29.000, 0)
+
+Meter Sizes (7 sizes with admin fees):
+- 1/2" (DN15): Rp 7.500/month
+- 3/4" (DN20): Rp 12.000/month
+- 1" (DN25): Rp 19.000/month
+- 1.5" (DN40): Rp 30.000/month
+- 2" (DN50): Rp 48.000/month
+- 3" (DN80): Rp 76.000/month
+- 4" (DN100): Rp 121.000/month
+
+Progressive Block Rate Calculation Example (2R1, 30m³, 1/2" meter):
+- Block I (0-10 m³): 10 × Rp 7.100 = Rp 71.000
+- Block II (11-20 m³): 10 × Rp 8.500 = Rp 85.000
+- Block III (21-30 m³): 10 × Rp 9.500 = Rp 95.000
+- Water Charge: Rp 251.000
+- Admin Fee (1/2"): Rp 7.500
+- Total: Rp 258.500 ✓ (matches tirtaraharja.co.id example)
+
+Sample Notification Templates:
+- bill_reminder: "Yth. {{customer_name}}, tagihan air meter {{meter_number}} bulan {{period}} sebesar Rp {{amount}} jatuh tempo {{due_date}}. Info: PDAM Kota"
+- overdue_notice: "Yth. {{customer_name}}, tagihan air meter {{meter_number}} sebesar Rp {{amount}} telah jatuh tempo. Mohon segera melakukan pembayaran."
+- payment_confirmation: "Terima kasih {{customer_name}}, pembayaran meter {{meter_number}} sebesar Rp {{amount}} telah kami terima pada {{payment_date}}."
+
+Key Features:
+- Multiple meters per customer with independent billing
+- Progressive block rate calculation per meter
+- 20 customer groups with accurate rates
+- 7 meter sizes with different admin fees
+- Billing per meter, aggregated per customer
+- WhatsApp integration via wa.me links
+- Comprehensive audit logging
+- API-first Laravel application
+- Support for 1000+ concurrent users
+- Accurate calculation matching real-world examples
+*/

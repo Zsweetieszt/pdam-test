@@ -1,0 +1,1398 @@
+{
+	"info": {
+		"_postman_id": "pdam-billing-system-api",
+		"name": "PDAM Billing System API",
+		"description": "Complete API collection for PDAM Billing System with all endpoints including Authentication, Customer Management, Bill Management, Payment Processing, WhatsApp Integration, Template Management, System Configuration, Dashboard Analytics, and Comprehensive Reporting",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"item": [
+		{
+			"name": "Authentication",
+			"item": [
+				{
+					"name": "Register User",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Accept",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"name\": \"John Customer\",\n    \"phone\": \"08123456789\",\n    \"password\": \"Password123\",\n    \"password_confirmation\": \"Password123\",\n    \"ktp_number\": \"9876543210123456\",\n    \"address\": \"Jl. Merdeka No. 123\",\n    \"tariff_group\": \"R1\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/auth/register",
+							"host": ["{{base_url}}"],
+							"path": ["api", "auth", "register"]
+						}
+					}
+				},
+				{
+					"name": "Login Admin",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"if (pm.response.code === 200) {",
+									"    const response = pm.response.json();",
+									"    pm.environment.set('admin_token', response.token);",
+									"    pm.environment.set('admin_user_id', response.user.id);",
+									"}"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Accept",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"phone\": \"08111111111\",\n    \"password\": \"Password123\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/auth/login",
+							"host": ["{{base_url}}"],
+							"path": ["api", "auth", "login"]
+						}
+					}
+				},
+				{
+					"name": "Login Keuangan",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"if (pm.response.code === 200) {",
+									"    const response = pm.response.json();",
+									"    pm.environment.set('keuangan_token', response.token);",
+									"    pm.environment.set('keuangan_user_id', response.user.id);",
+									"}"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Accept",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"phone\": \"08222222222\",\n    \"password\": \"Password123\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/auth/login",
+							"host": ["{{base_url}}"],
+							"path": ["api", "auth", "login"]
+						}
+					}
+				},
+				{
+					"name": "Login Manajemen",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"if (pm.response.code === 200) {",
+									"    const response = pm.response.json();",
+									"    pm.environment.set('manajemen_token', response.token);",
+									"    pm.environment.set('manajemen_user_id', response.user.id);",
+									"}"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Accept",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"phone\": \"08333333333\",\n    \"password\": \"Password123\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/auth/login",
+							"host": ["{{base_url}}"],
+							"path": ["api", "auth", "login"]
+						}
+					}
+				},
+				{
+					"name": "Logout",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{admin_token}}"
+							},
+							{
+								"key": "Accept",
+								"value": "application/json"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/auth/logout",
+							"host": ["{{base_url}}"],
+							"path": ["api", "auth", "logout"]
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "Customer Management",
+			"item": [
+				{
+					"name": "List Customers",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{admin_token}}"
+							},
+							{
+								"key": "Accept",
+								"value": "application/json"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/customers?page=1&per_page=10&search=&is_active=true",
+							"host": ["{{base_url}}"],
+							"path": ["api", "customers"],
+							"query": [
+								{
+									"key": "page",
+									"value": "1"
+								},
+								{
+									"key": "per_page",
+									"value": "10"
+								},
+								{
+									"key": "search",
+									"value": ""
+								},
+								{
+									"key": "is_active",
+									"value": "true"
+								}
+							]
+						}
+					}
+				},
+				{
+					"name": "Create Customer",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"if (pm.response.code === 201) {",
+									"    const response = pm.response.json();",
+									"    pm.environment.set('customer_id', response.data.id);",
+									"}"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{admin_token}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Accept",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"name\": \"Jane Customer\",\n    \"phone\": \"08987654321\",\n    \"password\": \"Password123\",\n    \"ktp_number\": \"1234567890123456\",\n    \"address\": \"Jl. Sudirman No. 456\",\n    \"tariff_group\": \"R1\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/customers",
+							"host": ["{{base_url}}"],
+							"path": ["api", "customers"]
+						}
+					}
+				},
+				{
+					"name": "Get Customer Detail",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{admin_token}}"
+							},
+							{
+								"key": "Accept",
+								"value": "application/json"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/customers/{{customer_id}}",
+							"host": ["{{base_url}}"],
+							"path": ["api", "customers", "{{customer_id}}"]
+						}
+					}
+				},
+				{
+					"name": "Update Customer",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{admin_token}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Accept",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"name\": \"Jane Customer Updated\",\n    \"phone\": \"08987654321\",\n    \"ktp_number\": \"1234567890123456\",\n    \"address\": \"Jl. Sudirman No. 456 Updated\",\n    \"tariff_group\": \"R2\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/customers/{{customer_id}}",
+							"host": ["{{base_url}}"],
+							"path": ["api", "customers", "{{customer_id}}"]
+						}
+					}
+				},
+				{
+					"name": "Delete Customer",
+					"request": {
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{admin_token}}"
+							},
+							{
+								"key": "Accept",
+								"value": "application/json"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/customers/{{customer_id}}",
+							"host": ["{{base_url}}"],
+							"path": ["api", "customers", "{{customer_id}}"]
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "Bill Management",
+			"item": [
+				{
+					"name": "List Bills",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{admin_token}}"
+							},
+							{
+								"key": "Accept",
+								"value": "application/json"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/bills?page=1&per_page=10&status=unpaid&customer_id=&start_date=&end_date=",
+							"host": ["{{base_url}}"],
+							"path": ["api", "bills"],
+							"query": [
+								{
+									"key": "page",
+									"value": "1"
+								},
+								{
+									"key": "per_page",
+									"value": "10"
+								},
+								{
+									"key": "status",
+									"value": "unpaid"
+								},
+								{
+									"key": "customer_id",
+									"value": ""
+								},
+								{
+									"key": "start_date",
+									"value": ""
+								},
+								{
+									"key": "end_date",
+									"value": ""
+								}
+							]
+						}
+					}
+				},
+				{
+					"name": "Create Bill",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"if (pm.response.code === 201) {",
+									"    const response = pm.response.json();",
+									"    pm.environment.set('bill_id', response.data.id);",
+									"}"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{admin_token}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Accept",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"meter_id\": 1,\n    \"billing_period_id\": 1,\n    \"previous_reading\": 100,\n    \"current_reading\": 150,\n    \"base_amount\": 75000,\n    \"additional_charges\": 5000,\n    \"tax_amount\": 8000,\n    \"due_date\": \"2025-09-30\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/bills",
+							"host": ["{{base_url}}"],
+							"path": ["api", "bills"]
+						}
+					}
+				},
+				{
+					"name": "Get Bill Detail",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{admin_token}}"
+							},
+							{
+								"key": "Accept",
+								"value": "application/json"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/bills/{{bill_id}}",
+							"host": ["{{base_url}}"],
+							"path": ["api", "bills", "{{bill_id}}"]
+						}
+					}
+				},
+				{
+					"name": "Update Bill",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{admin_token}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Accept",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"meter_id\": 1,\n    \"billing_period_id\": 1,\n    \"previous_reading\": 100,\n    \"current_reading\": 160,\n    \"base_amount\": 90000,\n    \"additional_charges\": 5000,\n    \"tax_amount\": 9500,\n    \"due_date\": \"2025-09-30\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/bills/{{bill_id}}",
+							"host": ["{{base_url}}"],
+							"path": ["api", "bills", "{{bill_id}}"]
+						}
+					}
+				},
+				{
+					"name": "Delete Bill",
+					"request": {
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{admin_token}}"
+							},
+							{
+								"key": "Accept",
+								"value": "application/json"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/bills/{{bill_id}}",
+							"host": ["{{base_url}}"],
+							"path": ["api", "bills", "{{bill_id}}"]
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "Payment Management",
+			"item": [
+				{
+					"name": "List Payments",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{keuangan_token}}"
+							},
+							{
+								"key": "Accept",
+								"value": "application/json"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/payments?page=1&per_page=10&status=pending&payment_method=&start_date=&end_date=",
+							"host": ["{{base_url}}"],
+							"path": ["api", "payments"],
+							"query": [
+								{
+									"key": "page",
+									"value": "1"
+								},
+								{
+									"key": "per_page",
+									"value": "10"
+								},
+								{
+									"key": "status",
+									"value": "pending"
+								},
+								{
+									"key": "payment_method",
+									"value": ""
+								},
+								{
+									"key": "start_date",
+									"value": ""
+								},
+								{
+									"key": "end_date",
+									"value": ""
+								}
+							]
+						}
+					}
+				},
+				{
+					"name": "Create Payment",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"if (pm.response.code === 201) {",
+									"    const response = pm.response.json();",
+									"    pm.environment.set('payment_id', response.data.id);",
+									"}"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{admin_token}}"
+							},
+							{
+								"key": "Accept",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "formdata",
+							"formdata": [
+								{
+									"key": "bill_id",
+									"value": "{{bill_id}}",
+									"type": "text"
+								},
+								{
+									"key": "amount",
+									"value": "88000",
+									"type": "text"
+								},
+								{
+									"key": "payment_method",
+									"value": "transfer",
+									"type": "text"
+								},
+								{
+									"key": "payment_date",
+									"value": "2025-08-21",
+									"type": "text"
+								},
+								{
+									"key": "reference_number",
+									"value": "TRF20250821001",
+									"type": "text"
+								},
+								{
+									"key": "notes",
+									"value": "Payment via Bank Transfer",
+									"type": "text"
+								},
+								{
+									"key": "payment_proof",
+									"type": "file",
+									"src": "/path/to/payment-proof.jpg"
+								}
+							]
+						},
+						"url": {
+							"raw": "{{base_url}}/api/payments",
+							"host": ["{{base_url}}"],
+							"path": ["api", "payments"]
+						}
+					}
+				},
+				{
+					"name": "Get Payment Detail",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{keuangan_token}}"
+							},
+							{
+								"key": "Accept",
+								"value": "application/json"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/payments/{{payment_id}}",
+							"host": ["{{base_url}}"],
+							"path": ["api", "payments", "{{payment_id}}"]
+						}
+					}
+				},
+				{
+					"name": "Verify Payment",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{keuangan_token}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Accept",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"verification_notes\": \"Payment verified successfully. Amount and bank transfer details confirmed.\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/payments/{{payment_id}}/verify",
+							"host": ["{{base_url}}"],
+							"path": ["api", "payments", "{{payment_id}}", "verify"]
+						}
+					}
+				},
+				{
+					"name": "Reject Payment",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{keuangan_token}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Accept",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"verification_notes\": \"Payment rejected due to insufficient amount or invalid bank transfer details.\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/payments/{{payment_id}}/reject",
+							"host": ["{{base_url}}"],
+							"path": ["api", "payments", "{{payment_id}}", "reject"]
+						}
+					}
+				},
+				{
+					"name": "Payment History",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{admin_token}}"
+							},
+							{
+								"key": "Accept",
+								"value": "application/json"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/payments/history?customer_id={{customer_id}}&start_date=2025-01-01&end_date=2025-12-31",
+							"host": ["{{base_url}}"],
+							"path": ["api", "payments", "history"],
+							"query": [
+								{
+									"key": "customer_id",
+									"value": "{{customer_id}}"
+								},
+								{
+									"key": "start_date",
+									"value": "2025-01-01"
+								},
+								{
+									"key": "end_date",
+									"value": "2025-12-31"
+								}
+							]
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "WhatsApp Integration",
+			"item": [
+				{
+					"name": "Send Bill Notification",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{admin_token}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Accept",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"bill_id\": {{bill_id}}\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/whatsapp/send-bill",
+							"host": ["{{base_url}}"],
+							"path": ["api", "whatsapp", "send-bill"]
+						}
+					}
+				},
+				{
+					"name": "Send Payment Reminder",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{admin_token}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Accept",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"bill_id\": {{bill_id}}\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/whatsapp/send-reminder",
+							"host": ["{{base_url}}"],
+							"path": ["api", "whatsapp", "send-reminder"]
+						}
+					}
+				},
+				{
+					"name": "Send Custom Message",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{admin_token}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Accept",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"phone\": \"08123456789\",\n    \"message\": \"Terima kasih telah melakukan pembayaran tepat waktu. Layanan air Anda akan terus berjalan lancar.\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/whatsapp/send-custom",
+							"host": ["{{base_url}}"],
+							"path": ["api", "whatsapp", "send-custom"]
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "Template Management",
+			"item": [
+				{
+					"name": "List Templates",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{admin_token}}"
+							},
+							{
+								"key": "Accept",
+								"value": "application/json"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/templates",
+							"host": ["{{base_url}}"],
+							"path": ["api", "templates"]
+						}
+					}
+				},
+				{
+					"name": "Create Template",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"if (pm.response.code === 201) {",
+									"    const response = pm.response.json();",
+									"    pm.environment.set('template_id', response.data.id);",
+									"}"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{admin_token}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Accept",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"name\": \"Pengingat Pembayaran Custom\",\n    \"type\": \"payment_reminder\",\n    \"message\": \"Yth. {{customer_name}}, tagihan air PDAM Anda sebesar {{amount}} untuk periode {{period}} telah jatuh tempo pada {{due_date}}. Mohon segera lakukan pembayaran. Terima kasih.\",\n    \"is_active\": true\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/templates",
+							"host": ["{{base_url}}"],
+							"path": ["api", "templates"]
+						}
+					}
+				},
+				{
+					"name": "Get Template Detail",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{admin_token}}"
+							},
+							{
+								"key": "Accept",
+								"value": "application/json"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/templates/{{template_id}}",
+							"host": ["{{base_url}}"],
+							"path": ["api", "templates", "{{template_id}}"]
+						}
+					}
+				},
+				{
+					"name": "Update Template",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{admin_token}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Accept",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"name\": \"Pengingat Pembayaran Custom Updated\",\n    \"type\": \"payment_reminder\",\n    \"message\": \"Yth. {{customer_name}}, tagihan air PDAM Anda sebesar {{amount}} untuk periode {{period}} telah jatuh tempo pada {{due_date}}. Mohon segera lakukan pembayaran melalui channel yang tersedia. Terima kasih.\",\n    \"is_active\": true\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/templates/{{template_id}}",
+							"host": ["{{base_url}}"],
+							"path": ["api", "templates", "{{template_id}}"]
+						}
+					}
+				},
+				{
+					"name": "Delete Template",
+					"request": {
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{admin_token}}"
+							},
+							{
+								"key": "Accept",
+								"value": "application/json"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/templates/{{template_id}}",
+							"host": ["{{base_url}}"],
+							"path": ["api", "templates", "{{template_id}}"]
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "System Configuration",
+			"item": [
+				{
+					"name": "Get All Configurations",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{admin_token}}"
+							},
+							{
+								"key": "Accept",
+								"value": "application/json"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/system-config",
+							"host": ["{{base_url}}"],
+							"path": ["api", "system-config"]
+						}
+					}
+				},
+				{
+					"name": "Update Configurations",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{admin_token}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Accept",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"tariff_rate\": \"1800\",\n    \"admin_fee\": \"5000\",\n    \"tax_rate\": \"10\",\n    \"company_name\": \"PDAM Kota Bandung\",\n    \"company_address\": \"Jl. Badak Singa No. 10, Bandung\",\n    \"company_phone\": \"022-4207868\",\n    \"late_payment_penalty\": \"2\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/system-config",
+							"host": ["{{base_url}}"],
+							"path": ["api", "system-config"]
+						}
+					}
+				},
+				{
+					"name": "Get Specific Configuration",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{admin_token}}"
+							},
+							{
+								"key": "Accept",
+								"value": "application/json"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/system-config/tariff_rate",
+							"host": ["{{base_url}}"],
+							"path": ["api", "system-config", "tariff_rate"]
+						}
+					}
+				},
+				{
+					"name": "Update Specific Configuration",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{admin_token}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Accept",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"value\": \"2000\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/system-config/tariff_rate",
+							"host": ["{{base_url}}"],
+							"path": ["api", "system-config", "tariff_rate"]
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "Dashboard Analytics",
+			"item": [
+				{
+					"name": "Admin Dashboard",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{admin_token}}"
+							},
+							{
+								"key": "Accept",
+								"value": "application/json"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/dashboard/admin",
+							"host": ["{{base_url}}"],
+							"path": ["api", "dashboard", "admin"]
+						}
+					}
+				},
+				{
+					"name": "Keuangan Dashboard",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{keuangan_token}}"
+							},
+							{
+								"key": "Accept",
+								"value": "application/json"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/dashboard/keuangan",
+							"host": ["{{base_url}}"],
+							"path": ["api", "dashboard", "keuangan"]
+						}
+					}
+				},
+				{
+					"name": "Manajemen Dashboard",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{manajemen_token}}"
+							},
+							{
+								"key": "Accept",
+								"value": "application/json"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/dashboard/manajemen",
+							"host": ["{{base_url}}"],
+							"path": ["api", "dashboard", "manajemen"]
+						}
+					}
+				},
+				{
+					"name": "Customer Dashboard",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{customer_token}}"
+							},
+							{
+								"key": "Accept",
+								"value": "application/json"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/dashboard/customer",
+							"host": ["{{base_url}}"],
+							"path": ["api", "dashboard", "customer"]
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "Comprehensive Reporting",
+			"item": [
+				{
+					"name": "Revenue Reports",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{admin_token}}"
+							},
+							{
+								"key": "Accept",
+								"value": "application/json"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/reports/revenue?start_date=2025-01-01&end_date=2025-12-31&group_by=month",
+							"host": ["{{base_url}}"],
+							"path": ["api", "reports", "revenue"],
+							"query": [
+								{
+									"key": "start_date",
+									"value": "2025-01-01"
+								},
+								{
+									"key": "end_date",
+									"value": "2025-12-31"
+								},
+								{
+									"key": "group_by",
+									"value": "month"
+								}
+							]
+						}
+					}
+				},
+				{
+					"name": "Customer Analysis Reports",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{manajemen_token}}"
+							},
+							{
+								"key": "Accept",
+								"value": "application/json"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/reports/customers?start_date=2025-01-01&end_date=2025-12-31&include_inactive=false",
+							"host": ["{{base_url}}"],
+							"path": ["api", "reports", "customers"],
+							"query": [
+								{
+									"key": "start_date",
+									"value": "2025-01-01"
+								},
+								{
+									"key": "end_date",
+									"value": "2025-12-31"
+								},
+								{
+									"key": "include_inactive",
+									"value": "false"
+								}
+							]
+						}
+					}
+				},
+				{
+					"name": "Usage Analysis Reports",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{admin_token}}"
+							},
+							{
+								"key": "Accept",
+								"value": "application/json"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/reports/usage?start_date=2025-01-01&end_date=2025-12-31&group_by=month",
+							"host": ["{{base_url}}"],
+							"path": ["api", "reports", "usage"],
+							"query": [
+								{
+									"key": "start_date",
+									"value": "2025-01-01"
+								},
+								{
+									"key": "end_date",
+									"value": "2025-12-31"
+								},
+								{
+									"key": "group_by",
+									"value": "month"
+								}
+							]
+						}
+					}
+				},
+				{
+					"name": "Export Revenue Report (PDF)",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{admin_token}}"
+							},
+							{
+								"key": "Accept",
+								"value": "application/pdf"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/reports/revenue/export?format=pdf&start_date=2025-01-01&end_date=2025-12-31&group_by=month",
+							"host": ["{{base_url}}"],
+							"path": ["api", "reports", "revenue", "export"],
+							"query": [
+								{
+									"key": "format",
+									"value": "pdf"
+								},
+								{
+									"key": "start_date",
+									"value": "2025-01-01"
+								},
+								{
+									"key": "end_date",
+									"value": "2025-12-31"
+								},
+								{
+									"key": "group_by",
+									"value": "month"
+								}
+							]
+						}
+					}
+				},
+				{
+					"name": "Export Customer Report (Excel)",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{manajemen_token}}"
+							},
+							{
+								"key": "Accept",
+								"value": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/reports/customers/export?format=excel&start_date=2025-01-01&end_date=2025-12-31&include_inactive=false",
+							"host": ["{{base_url}}"],
+							"path": ["api", "reports", "customers", "export"],
+							"query": [
+								{
+									"key": "format",
+									"value": "excel"
+								},
+								{
+									"key": "start_date",
+									"value": "2025-01-01"
+								},
+								{
+									"key": "end_date",
+									"value": "2025-12-31"
+								},
+								{
+									"key": "include_inactive",
+									"value": "false"
+								}
+							]
+						}
+					}
+				},
+				{
+					"name": "Export Usage Report (PDF)",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{admin_token}}"
+							},
+							{
+								"key": "Accept",
+								"value": "application/pdf"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/reports/usage/export?format=pdf&start_date=2025-01-01&end_date=2025-12-31&group_by=month",
+							"host": ["{{base_url}}"],
+							"path": ["api", "reports", "usage", "export"],
+							"query": [
+								{
+									"key": "format",
+									"value": "pdf"
+								},
+								{
+									"key": "start_date",
+									"value": "2025-01-01"
+								},
+								{
+									"key": "end_date",
+									"value": "2025-12-31"
+								},
+								{
+									"key": "group_by",
+									"value": "month"
+								}
+							]
+						}
+					}
+				}
+			]
+		}
+	],
+	"variable": [
+		{
+			"key": "base_url",
+			"value": "http://localhost:8000"
+		}
+	]
+}

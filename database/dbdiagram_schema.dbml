@@ -1,0 +1,258 @@
+// SISTEM PENAGIHAN PDAM SEDERHANA
+// Database Schema for dbdiagram.io
+// Use this at: https://dbdiagram.io/
+
+Project pdam_billing_system {
+  database_type: 'MariaDB'
+  Note: '''
+    # PDAM Billing System Sederhana dengan WhatsApp Link Generator
+    
+    This database schema supports:
+    - User management with role-based access (4 roles)
+    - Customer and water meter management
+    - Billing periods and bill generation
+    - Payment tracking and verification
+    - WhatsApp link generation (wa.me links)
+    - Audit logging and notification templates
+    
+    ## Roles:
+    - Admin: Full system access and user management
+    - Keuangan: Billing, payment management + WhatsApp link generation
+    - Customer: Self-service portal for viewing bills and payments
+    - Manajemen: Reports and analytics (read-only)
+    
+    ## Simplified Features:
+    - Single Laravel application (no Express.js microservice)
+    - WhatsApp integration via link generation instead of API
+    - 9 essential tables for core functionality
+    - Budget-friendly architecture with 100 concurrent users capacity
+  '''
+}
+
+// ============================================
+// CORE TABLES
+// ============================================
+
+Table roles {
+  id int [pk, increment]
+  name varchar(50) [unique, not null, note: 'admin, keuangan, customer, manajemen']
+  description text
+  created_at timestamp [default: `CURRENT_TIMESTAMP`]
+  updated_at timestamp [default: `CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP`]
+  
+  Note: 'User roles for authorization'
+}
+
+Table users {
+  id int [pk, increment]
+  role_id int [ref: > roles.id, not null]
+  email varchar(255) [null]
+  phone varchar(20) [unique, not null]
+  password_hash varchar(255) [not null]
+  name varchar(255) [not null]
+  is_active boolean [default: true]
+  phone_verified_at timestamp [null]
+  created_at timestamp [default: `CURRENT_TIMESTAMP`]
+  updated_at timestamp [default: `CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP`]
+  
+  Note: 'System users with role-based access using phone verification'
+}
+
+Table customers {
+  id int [pk, increment]
+  user_id int [ref: - users.id, not null, note: 'One-to-one with users table']
+  customer_number varchar(50) [unique, not null, note: 'PDAM customer number']
+  ktp_number varchar(20) [unique, not null, note: 'Indonesian ID number']
+  address text [not null]
+  tariff_group varchar(10) [not null, note: 'R1, R2, R3, etc. - Water tariff groups']
+  created_at timestamp [default: `CURRENT_TIMESTAMP`]
+  updated_at timestamp [default: `CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP`]
+  
+  Note: 'PDAM water customers with tariff group classification'
+}
+
+Table meters {
+  id int [pk, increment]
+  customer_id int [ref: > customers.id, not null]
+  meter_number varchar(50) [unique, not null]
+  meter_type meter_type_enum [not null, note: 'analog or digital']
+  installation_date date [not null]
+  is_active boolean [default: true]
+  created_at timestamp [default: `CURRENT_TIMESTAMP`]
+  updated_at timestamp [default: `CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP`]
+  
+  Note: 'Water meters for each customer'
+}
+
+// ============================================
+// BILLING TABLES
+// ============================================
+
+Table billing_periods {
+  id int [pk, increment]
+  period_year int [not null]
+  period_month int [not null]
+  start_date date [not null]
+  end_date date [not null]
+  due_date date [not null]
+  is_active boolean [default: true]
+  created_at timestamp [default: `CURRENT_TIMESTAMP`]
+  updated_at timestamp [default: `CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP`]
+  
+  indexes {
+    (period_year, period_month) [unique]
+  }
+  
+  Note: 'Monthly billing periods'
+}
+
+Table bills {
+  id int [pk, increment]
+  meter_id int [ref: > meters.id, not null]
+  billing_period_id int [ref: > billing_periods.id, not null]
+  bill_number varchar(50) [unique, not null]
+  previous_reading int [not null, default: 0]
+  current_reading int [not null]
+  usage_m3 int [note: 'Computed: current_reading - previous_reading (cubic meters)']
+  base_amount decimal(15,2) [not null]
+  additional_charges decimal(15,2) [default: 0]
+  tax_amount decimal(15,2) [default: 0]
+  total_amount decimal(15,2) [note: 'Computed: base_amount + additional_charges + tax_amount']
+  status bill_status_enum [default: 'pending']
+  issued_date date [not null]
+  due_date date [not null]
+  created_at timestamp [default: `CURRENT_TIMESTAMP`]
+  updated_at timestamp [default: `CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP`]
+  
+  indexes {
+    (meter_id, billing_period_id) [unique]
+    status
+    due_date
+  }
+  
+  Note: 'Monthly water bills with m3 usage calculation'
+}
+
+Table payments {
+  id int [pk, increment]
+  bill_id int [ref: > bills.id, not null]
+  payment_method payment_method_enum [not null]
+  amount decimal(15,2) [not null]
+  payment_date datetime [not null]
+  reference_number varchar(100) [note: 'Bank/payment gateway reference']
+  notes text
+  verified_by int [ref: > users.id, note: 'Staff who verified payment']
+  verified_at timestamp [null]
+  created_at timestamp [default: `CURRENT_TIMESTAMP`]
+  updated_at timestamp [default: `CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP`]
+  
+  indexes {
+    payment_date
+  }
+  
+  Note: 'Payment records for bills'
+}
+
+// ============================================
+// WHATSAPP INTEGRATION TABLES
+// ============================================
+
+Table notification_templates {
+  id int [pk, increment]
+  template_name varchar(100) [unique, not null]
+  template_type message_template_enum [not null]
+  subject varchar(255)
+  message_content text [not null, note: 'Template with {{variables}} for wa.me link generation']
+  variables json [note: 'Available variables: {{customer_name}}, {{amount}}, {{due_date}}, etc.']
+  is_active boolean [default: true]
+  created_at timestamp [default: `CURRENT_TIMESTAMP`]
+  updated_at timestamp [default: `CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP`]
+  
+  Note: 'WhatsApp message templates for link generation with dynamic variables'
+}
+
+// ============================================
+// SYSTEM TABLES
+// ============================================
+
+Table audit_logs {
+  id int [pk, increment]
+  user_id int [ref: > users.id, note: 'User who performed action']
+  action varchar(100) [not null, note: 'CREATE, UPDATE, DELETE, LOGIN, GENERATE_WHATSAPP_LINK, etc.']
+  table_name varchar(50) [not null]
+  record_id int [note: 'ID of affected record']
+  old_values json [note: 'Previous values before change']
+  new_values json [note: 'New values after change']
+  ip_address varchar(45)
+  user_agent text
+  created_at timestamp [default: `CURRENT_TIMESTAMP`]
+  
+  indexes {
+    (user_id, action)
+    created_at
+  }
+  
+  Note: 'Audit trail for all system activities including WhatsApp link generation'
+}
+
+// ============================================
+// ENUMS
+// ============================================
+
+Enum meter_type_enum {
+  analog [note: 'Traditional analog water meter']
+  digital [note: 'Digital water meter with precise readings']
+}
+
+Enum bill_status_enum {
+  pending [note: 'Bill generated, ready for WhatsApp link generation']
+  sent [note: 'WhatsApp link generated and shared with customer']
+  paid [note: 'Payment received and verified']
+  overdue [note: 'Past due date, payment not received']
+  cancelled [note: 'Bill cancelled']
+}
+
+Enum payment_method_enum {
+  transfer [note: 'Bank transfer']
+  cash [note: 'Cash payment at office']
+  online [note: 'Online payment gateway']
+  mobile_banking [note: 'Mobile banking app']
+}
+
+Enum message_template_enum {
+  bill_reminder [note: 'Monthly water bill notification via WhatsApp link']
+  overdue_notice [note: 'Overdue payment warning via WhatsApp link']
+  payment_confirmation [note: 'Payment received confirmation']
+}
+
+// ============================================
+// SAMPLE DATA COMMENTS
+// ============================================
+
+/*
+Default Roles (4 roles maintained as requested):
+- admin: Administrator dengan akses penuh sistem dan manajemen user
+- keuangan: Staff keuangan untuk penagihan, pembayaran + generate WhatsApp link
+- customer: Pelanggan PDAM untuk self-service portal
+- manajemen: Manajemen untuk laporan dan analisis (read-only)
+
+Sample Notification Templates:
+- bill_reminder: "Yth. {{customer_name}}, tagihan air PDAM bulan {{period}} sebesar Rp {{amount}} jatuh tempo {{due_date}}. Info: PDAM Kota"
+- overdue_notice: "Yth. {{customer_name}}, tagihan air Anda sebesar Rp {{amount}} telah jatuh tempo. Mohon segera melakukan pembayaran."
+- payment_confirmation: "Terima kasih {{customer_name}}, pembayaran sebesar Rp {{amount}} telah kami terima pada {{payment_date}}."
+
+Water Tariff Groups:
+- R1: Rumah tangga golongan 1 (0-10 m3)
+- R2: Rumah tangga golongan 2 (11-20 m3)  
+- R3: Rumah tangga golongan 3 (>20 m3)
+- B1: Bisnis golongan 1
+- B2: Bisnis golongan 2
+
+Core Features:
+- Single Laravel application (no Express.js microservice)
+- WhatsApp integration via wa.me link generation
+- 9 essential database tables
+- Support for 100 concurrent users
+- Response time ≤ 5 seconds
+- 95% uptime requirement
+*/
