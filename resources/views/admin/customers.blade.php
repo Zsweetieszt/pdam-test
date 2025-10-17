@@ -22,7 +22,6 @@
                     </div>
                 </div>
                 <div class="card-body">
-                    <!-- Quick Stats -->
                     <div class="row mb-4">
                         <div class="col-lg-3 col-md-6 mb-3 mb-lg-0">
                             <div class="card bg-primary text-white border-0 h-100">
@@ -58,7 +57,6 @@
                         </div>
                     </div>
 
-                    <!-- Search and Filter Section - REQ-F-3.1 -->
                     <div class="row mb-4">
                         <div class="col-lg-4 col-md-6 mb-3 mb-lg-0">
                             <div class="input-group">
@@ -99,7 +97,6 @@
                         </div>
                     </div>
 
-                    <!-- Loading State -->
                     <div id="loadingState" class="text-center py-5 d-none">
                         <div class="spinner-border text-primary" role="status">
                             <span class="visually-hidden">Loading...</span>
@@ -107,7 +104,6 @@
                         <p class="mt-2 text-muted">Memuat data pelanggan...</p>
                     </div>
 
-                    <!-- Data Table - REQ-F-10 -->
                     <div class="table-responsive" id="customersTableContainer">
                         <table class="table table-hover align-middle mb-0">
                             <thead class="table-primary">
@@ -152,7 +148,6 @@
                         </table>
                     </div>
 
-                    <!-- Pagination -->
                     <div class="row align-items-center mt-4">
                         <div class="col-md-4 col-sm-6 mb-3 mb-md-0">
                             <select class="form-select form-select-sm" id="perPageSelect" onchange="changePerPage()">
@@ -170,8 +165,7 @@
                         <div class="col-md-4">
                             <nav id="paginationNav">
                                 <ul class="pagination pagination-sm justify-content-center justify-content-md-end mb-0" id="paginationList">
-                                    <!-- Pagination will be generated here -->
-                                </ul>
+                                    </ul>
                             </nav>
                         </div>
                     </div>
@@ -180,7 +174,6 @@
     </div>
 </div>
 
-<!-- Modal Add/Edit Customer - REQ-F-3.2 -->
 <div class="modal fade" id="customerModal" tabindex="-1" data-bs-backdrop="static">
     <div class="modal-dialog modal-xl modal-dialog-scrollable">
         <div class="modal-content">
@@ -193,7 +186,6 @@
             </div>
             <div class="modal-body">
                 <form id="customerForm">
-                    <!-- Section 1: Data Pengguna -->
                     <div class="row mb-4">
                         <div class="col-12">
                             <h6 class="text-primary mb-3 border-bottom pb-2">
@@ -252,7 +244,6 @@
                         </div>
                     </div>
 
-                    <!-- Section 2: Data Pelanggan -->
                     <div class="row mb-4">
                         <div class="col-12">
                             <h6 class="text-primary mb-3 border-bottom pb-2">
@@ -312,7 +303,6 @@
                         </div>
                     </div>
 
-                    <!-- Section 3: Data Meter Air -->
                     <div class="row mb-4">
                         <div class="col-12">
                             <h6 class="text-primary mb-3 border-bottom pb-2">
@@ -349,7 +339,6 @@
                         </div>
                     </div>
 
-                    <!-- Info Section -->
                     <div class="row">
                         <div class="col-12">
                             <div class="alert alert-info">
@@ -394,7 +383,6 @@
     </div>
 </div>
 
-<!-- Modal Detail Customer - REQ-F-3.3 -->
 <div class="modal fade" id="customerDetailModal" tabindex="-1">
     <div class="modal-dialog modal-xl modal-dialog-scrollable">
         <div class="modal-content">
@@ -424,7 +412,6 @@
     </div>
 </div>
 
-<!-- Custom Styles -->
 <style>
     /* Enhanced table styling for REQ-F-10 */
     .table-responsive {
@@ -598,7 +585,6 @@
     }
 </style>
 
-<!-- JavaScript -->
 <script>
 // Global variables
 let currentPage = 1;
@@ -619,9 +605,8 @@ if (typeof window.axios === 'undefined') {
     }
     
     // Set API base URL
-    axios.defaults.baseURL = window.location.origin;
+    axios.defaults.baseURL = '{{ url('/') }}';
     
-    // Add auth header if available
     axios.defaults.headers.common['Accept'] = 'application/json';
     axios.defaults.headers.common['Content-Type'] = 'application/json';
 }
@@ -629,11 +614,11 @@ if (typeof window.axios === 'undefined') {
 // Initialize when page loads
 document.addEventListener('DOMContentLoaded', function() {
     setupSearchHandlers();
-    loadCustomerStats();
-    searchCustomers();
+    loadCustomerStats(); // Load stats from API
+    searchCustomers(); // Load table data from API
 });
 
-// REQ-F-3.1: Search customers
+// REQ-F-3.1: Search and fetch customers from API
 async function searchCustomers(page = 1) {
     showLoading(true);
     
@@ -642,18 +627,32 @@ async function searchCustomers(page = 1) {
     const statusFilter = document.getElementById('statusFilter').value;
     
     try {
-        // Simulate API delay like in user management
-        await new Promise(resolve => setTimeout(resolve, 800));
+        const response = await axios.get('/api/customers', {
+            params: {
+                page: page,
+                per_page: perPage,
+                sort_field: sortField,
+                sort_direction: sortDirection,
+                search: searchTerm,
+                // Parameter filter sesuai dengan API CustomerController@index
+                tariff_group: tariffFilter,
+                status: statusFilter 
+            }
+        });
         
-        // Use mock data instead of real API call
-        const mockData = generateMockCustomers(page, perPage, searchTerm, tariffFilter, statusFilter);
-        
-        displayCustomers(mockData);
-        updatePagination(mockData);
-        currentPage = page;
+        const data = response.data;
+
+        if (data.data) {
+            displayCustomers(data);
+            updatePagination(data);
+            currentPage = page;
+        } else {
+            handleApiError(null, 'Gagal memuat data pelanggan: format respons tidak sesuai.');
+        }
+
     } catch (error) {
         console.error('Error loading customers:', error);
-        handleApiError(error, 'Gagal memuat data pelanggan');
+        handleApiError(error, 'Gagal memuat data pelanggan. Pastikan server aktif dan terautentikasi.');
     } finally {
         showLoading(false);
     }
@@ -679,8 +678,16 @@ function displayCustomers(data) {
     }
     
     tbody.innerHTML = data.data.map((customer, index) => {
-        const meterInfo = customer.meters && customer.meters.length > 0 
-            ? customer.meters.map(meter => `
+        // Data dari Customer::with(['user', 'meters'])
+        const user = customer.user || {};
+        const meters = customer.meters || [];
+        
+        // Ambil tarif dari customer.tariff_group (untuk filter) atau meter pertama
+        const firstMeter = meters.length > 0 ? meters[0] : {};
+        const meterTariff = customer.tariff_group || firstMeter.customer_group_code || 'N/A';
+            
+        const meterInfo = meters.length > 0 
+            ? meters.map(meter => `
                 <div class="mb-1">
                     <div class="d-flex align-items-center justify-content-center">
                         <small class="text-primary fw-bold me-1">${meter.meter_number}</small>
@@ -692,7 +699,7 @@ function displayCustomers(data) {
               `).join('') 
             : '<span class="text-muted small">No meter</span>';
             
-        const rowNumber = ((currentPage - 1) * perPage) + index + 1;
+        const rowNumber = ((data.current_page - 1) * data.per_page) + index + 1;
             
         return `
             <tr class="hover-shadow">
@@ -705,13 +712,13 @@ function displayCustomers(data) {
                 <td class="d-none d-md-table-cell">
                     <div class="d-flex align-items-center">
                         <div class="avatar-circle me-3">
-                            ${customer.user?.name ? customer.user.name.charAt(0).toUpperCase() : '?'}
+                            ${user.name ? user.name.charAt(0).toUpperCase() : '?'}
                         </div>
                         <div>
-                            <div class="fw-bold text-dark">${customer.user?.name || 'N/A'}</div>
+                            <div class="fw-bold text-dark">${user.name || 'N/A'}</div>
                             <small class="text-muted">
                                 <i class="fas fa-phone fa-xs me-1"></i>
-                                ${customer.user?.phone || '-'}
+                                ${user.phone || '-'}
                             </small>
                         </div>
                     </div>
@@ -726,15 +733,15 @@ function displayCustomers(data) {
                     <small class="font-monospace">${customer.ktp_number || '-'}</small>
                 </td>
                 <td class="d-none d-md-table-cell text-center">
-                    <span class="badge ${getTariffBadgeClass(customer.tariff_group)}">${customer.tariff_group || '-'}</span>
+                    <span class="badge ${getTariffBadgeClass(meterTariff)}">${meterTariff}</span>
                 </td>
                 <td class="d-none d-lg-table-cell text-center">${meterInfo}</td>
                 <td class="d-none d-lg-table-cell text-center">
                     <small class="text-muted">${formatDate(customer.created_at)}</small>
                 </td>
                 <td class="d-none d-sm-table-cell text-center">
-                    <span class="badge ${customer.user?.is_active ? 'bg-success' : 'bg-danger'}">
-                        ${customer.user?.is_active ? 'Aktif' : 'Non-Aktif'}
+                    <span class="badge ${user.is_active ? 'bg-success' : 'bg-danger'}">
+                        ${user.is_active ? 'Aktif' : 'Non-Aktif'}
                     </span>
                 </td>
                 <td class="text-center">
@@ -764,334 +771,7 @@ function displayCustomers(data) {
     });
 }
 
-// Generate mock customer data with proper sorting support
-function generateMockCustomers(page, perPage, search, tariffFilter, statusFilter) {
-    const allCustomers = [
-        {
-            id: 1,
-            customer_number: 'PLG001',
-            ktp_number: '3201234567890001',
-            address: 'Jl. Merdeka No. 12, Bandung',
-            tariff_group: 'R1',
-            created_at: '2024-01-15',
-            updated_at: '2024-01-15',
-            user: {
-                id: 5,
-                name: 'Budi Santoso',
-                phone: '085723302116',
-                email: 'budi.santoso@gmail.com',
-                is_active: true
-            },
-            meters: [
-                {
-                    id: 1,
-                    meter_number: 'MTR001',
-                    meter_type: 'digital',
-                    installation_date: '2024-01-15',
-                    is_active: true
-                }
-            ]
-        },
-        {
-            id: 2,
-            customer_number: 'PLG002',
-            ktp_number: '3201234567890002',
-            address: 'Jl. Sudirman No. 45, Jakarta Pusat',
-            tariff_group: 'R2',
-            created_at: '2024-01-16',
-            updated_at: '2024-01-16',
-            user: {
-                id: 6,
-                name: 'Siti Rahayu',
-                phone: '08221234567',
-                email: 'siti.rahayu@gmail.com',
-                is_active: true
-            },
-            meters: [
-                {
-                    id: 2,
-                    meter_number: 'MTR002',
-                    meter_type: 'analog',
-                    installation_date: '2024-01-16',
-                    is_active: true
-                }
-            ]
-        },
-        {
-            id: 3,
-            customer_number: 'PLG003',
-            ktp_number: '3201234567890003',
-            address: 'Jl. Gatot Subroto No. 88, Surabaya',
-            tariff_group: 'N1',
-            created_at: '2024-01-17',
-            updated_at: '2024-01-17',
-            user: {
-                id: 7,
-                name: 'Ahmad Hidayat',
-                phone: '08331234567',
-                email: 'ahmad.hidayat@yahoo.com',
-                is_active: false
-            },
-            meters: [
-                {
-                    id: 3,
-                    meter_number: 'MTR003',
-                    meter_type: 'digital',
-                    installation_date: '2024-01-17',
-                    is_active: false
-                }
-            ]
-        },
-        {
-            id: 4,
-            customer_number: 'PLG004',
-            ktp_number: '3201234567890004',
-            address: 'Jl. Diponegoro No. 123, Yogyakarta',
-            tariff_group: 'R1',
-            created_at: '2024-01-18',
-            updated_at: '2024-01-18',
-            user: {
-                id: 8,
-                name: 'Maria Gonzalez',
-                phone: '08441234567',
-                email: 'maria.gonzalez@outlook.com',
-                is_active: true
-            },
-            meters: [
-                {
-                    id: 4,
-                    meter_number: 'MTR004',
-                    meter_type: 'digital',
-                    installation_date: '2024-01-18',
-                    is_active: true
-                }
-            ]
-        },
-        {
-            id: 5,
-            customer_number: 'PLG005',
-            ktp_number: '3201234567890005',
-            address: 'Jl. Ahmad Yani No. 67, Medan',
-            tariff_group: 'N2',
-            created_at: '2024-01-19',
-            updated_at: '2024-01-19',
-            user: {
-                id: 9,
-                name: 'Rudi Hartono',
-                phone: '08551234567',
-                email: 'rudi.hartono@gmail.com',
-                is_active: true
-            },
-            meters: [
-                {
-                    id: 5,
-                    meter_number: 'MTR005',
-                    meter_type: 'analog',
-                    installation_date: '2024-01-19',
-                    is_active: true
-                }
-            ]
-        },
-        {
-            id: 6,
-            customer_number: 'PLG006',
-            ktp_number: '3201234567890006',
-            address: 'Jl. Veteran No. 34, Makassar',
-            tariff_group: 'R1',
-            created_at: '2024-01-20',
-            updated_at: '2024-01-20',
-            user: {
-                id: 10,
-                name: 'Dewi Sartika',
-                phone: '085723302116',
-                email: 'dewi.sartika@gmail.com',
-                is_active: true
-            },
-            meters: [
-                {
-                    id: 6,
-                    meter_number: 'MTR006',
-                    meter_type: 'digital',
-                    installation_date: '2024-01-20',
-                    is_active: true
-                }
-            ]
-        },
-        {
-            id: 7,
-            customer_number: 'PLG007',
-            ktp_number: '3201234567890007',
-            address: 'Jl. Pemuda No. 56, Semarang',
-            tariff_group: 'R2',
-            created_at: '2024-01-21',
-            updated_at: '2024-01-21',
-            user: {
-                id: 11,
-                name: 'Bambang Setiawan',
-                phone: '08771234567',
-                email: null,
-                is_active: false
-            },
-            meters: [
-                {
-                    id: 7,
-                    meter_number: 'MTR007',
-                    meter_type: 'analog',
-                    installation_date: '2024-01-21',
-                    is_active: false
-                }
-            ]
-        },
-        {
-            id: 8,
-            customer_number: 'PLG008',
-            ktp_number: '3201234567890008',
-            address: 'Jl. Pahlawan No. 78, Denpasar',
-            tariff_group: 'N1',
-            created_at: '2024-01-22',
-            updated_at: '2024-01-22',
-            user: {
-                id: 12,
-                name: 'I Ketut Wirawan',
-                phone: '08881234567',
-                email: 'ketut.wirawan@gmail.com',
-                is_active: true
-            },
-            meters: [
-                {
-                    id: 8,
-                    meter_number: 'MTR008',
-                    meter_type: 'digital',
-                    installation_date: '2024-01-22',
-                    is_active: true
-                }
-            ]
-        },
-        {
-            id: 9,
-            customer_number: 'PLG009',
-            ktp_number: '3201234567890009',
-            address: 'Jl. Kartini No. 23, Palembang',
-            tariff_group: 'R1',
-            created_at: '2024-01-23',
-            updated_at: '2024-01-23',
-            user: {
-                id: 13,
-                name: 'Linda Sari',
-                phone: '08991234567',
-                email: 'linda.sari@yahoo.com',
-                is_active: true
-            },
-            meters: [
-                {
-                    id: 9,
-                    meter_number: 'MTR009',
-                    meter_type: 'analog',
-                    installation_date: '2024-01-23',
-                    is_active: true
-                }
-            ]
-        },
-        {
-            id: 10,
-            customer_number: 'PLG010',
-            ktp_number: '3201234567890010',
-            address: 'Jl. Hasanuddin No. 91, Balikpapan',
-            tariff_group: 'N2',
-            created_at: '2024-01-24',
-            updated_at: '2024-01-24',
-            user: {
-                id: 14,
-                name: 'Agus Pranoto',
-                phone: '08101234567',
-                email: 'agus.pranoto@gmail.com',
-                is_active: true
-            },
-            meters: [
-                {
-                    id: 10,
-                    meter_number: 'MTR010',
-                    meter_type: 'digital',
-                    installation_date: '2024-01-24',
-                    is_active: true
-                }
-            ]
-        }
-    ];
-    
-    // Apply filters first
-    let filteredCustomers = allCustomers;
-    
-    if (search) {
-        const searchLower = search.toLowerCase();
-        filteredCustomers = filteredCustomers.filter(customer => 
-            customer.customer_number.toLowerCase().includes(searchLower) ||
-            customer.user.name.toLowerCase().includes(searchLower) ||
-            customer.user.phone.includes(search) ||
-            (customer.user.email && customer.user.email.toLowerCase().includes(searchLower)) ||
-            customer.meters.some(meter => meter.meter_number.toLowerCase().includes(searchLower))
-        );
-    }
-    
-    if (tariffFilter) {
-        filteredCustomers = filteredCustomers.filter(customer => customer.tariff_group === tariffFilter);
-    }
-    
-    if (statusFilter) {
-        const isActive = statusFilter === 'active';
-        filteredCustomers = filteredCustomers.filter(customer => customer.user.is_active === isActive);
-    }
-    
-    // Apply sorting
-    filteredCustomers.sort((a, b) => {
-        let valueA, valueB;
-        
-        switch(sortField) {
-            case 'customer_number':
-                valueA = a.customer_number || '';
-                valueB = b.customer_number || '';
-                break;
-            case 'name':
-                valueA = a.user?.name || '';
-                valueB = b.user?.name || '';
-                break;
-            case 'created_at':
-                valueA = new Date(a.created_at);
-                valueB = new Date(b.created_at);
-                break;
-            default:
-                valueA = a.id;
-                valueB = b.id;
-        }
-        
-        // Handle different data types
-        if (valueA instanceof Date && valueB instanceof Date) {
-            return sortDirection === 'asc' 
-                ? valueA.getTime() - valueB.getTime()
-                : valueB.getTime() - valueA.getTime();
-        } else {
-            const comparison = valueA.toString().localeCompare(valueB.toString(), 'id-ID');
-            return sortDirection === 'asc' ? comparison : -comparison;
-        }
-    });
-    
-    // Apply pagination
-    const startIndex = (page - 1) * parseInt(perPage);
-    const endIndex = startIndex + parseInt(perPage);
-    const paginatedCustomers = filteredCustomers.slice(startIndex, endIndex);
-    
-    return {
-        data: paginatedCustomers,
-        current_page: parseInt(page),
-        per_page: parseInt(perPage),
-        total: filteredCustomers.length,
-        last_page: Math.ceil(filteredCustomers.length / parseInt(perPage)),
-        from: filteredCustomers.length === 0 ? 0 : startIndex + 1,
-        to: Math.min(endIndex, filteredCustomers.length)
-    };
-}
-
-// Load customer statistics
+// Load customer statistics from API
 async function loadCustomerStats() {
     // Set loading state
     ['total-customers', 'active-customers', 'total-meters', 'inactive-meters'].forEach(id => {
@@ -1099,23 +779,16 @@ async function loadCustomerStats() {
     });
     
     try {
-        // Simulate delay
-        await new Promise(resolve => setTimeout(resolve, 500));
+        const response = await axios.get('/api/customers/stats'); // Endpoint sudah tersedia
+        const stats = response.data.data;
         
-        // Calculate stats from mock data
-        const allData = generateMockCustomers(1, 1000, '', '', '');
-        const totalCustomers = allData.total;
-        const activeCustomers = allData.data.filter(c => c.user.is_active).length;
-        const totalMeters = allData.data.reduce((sum, c) => sum + c.meters.length, 0);
-        const inactiveMeters = allData.data.reduce((sum, c) => sum + c.meters.filter(m => !m.is_active).length, 0);
-        
-        document.getElementById('total-customers').textContent = totalCustomers;
-        document.getElementById('active-customers').textContent = activeCustomers;
-        document.getElementById('total-meters').textContent = totalMeters;
-        document.getElementById('inactive-meters').textContent = inactiveMeters;
+        document.getElementById('total-customers').textContent = stats.total_customers || 0;
+        document.getElementById('active-customers').textContent = stats.active_customers || 0;
+        document.getElementById('total-meters').textContent = stats.total_meters || 0;
+        document.getElementById('inactive-meters').textContent = stats.inactive_meters || 0;
     } catch (error) {
         console.error('Error loading stats:', error);
-        // Set default values
+        // Set default values on error
         ['total-customers', 'active-customers', 'total-meters', 'inactive-meters'].forEach(id => {
             document.getElementById(id).textContent = '0';
         });
@@ -1147,12 +820,9 @@ async function editCustomer(customerId) {
     showLoading(true);
     
     try {
-        // Simulate API delay
-        await new Promise(resolve => setTimeout(resolve, 500));
-        
-        // Get customer data from mock data
-        const allData = generateMockCustomers(1, 1000, '', '', '');
-        const customer = allData.data.find(c => c.id === customerId);
+        // Use API: CustomerController@show
+        const response = await axios.get(`/api/customers/${customerId}`);
+        const customer = response.data.data;
         
         if (!customer) {
             throw new Error('Customer tidak ditemukan');
@@ -1172,20 +842,24 @@ async function editCustomer(customerId) {
 
 // Fill form with customer data
 function fillCustomerForm(customer) {
+    // Fill User Data
     document.getElementById('customerName').value = customer.user?.name || '';
     document.getElementById('customerEmail').value = customer.user?.email || '';
     document.getElementById('customerPhone').value = customer.user?.phone || '';
+    
+    // Fill Customer Data
     document.getElementById('customerNumber').value = customer.customer_number || '';
     document.getElementById('ktpNumber').value = customer.ktp_number || '';
     document.getElementById('customerAddress').value = customer.address || '';
+    // Gunakan customer.tariff_group (dari tabel customers)
     document.getElementById('tariffGroup').value = customer.tariff_group || '';
     
-    // Fill meter data (first meter)
+    // Fill Meter Data (first meter)
     if (customer.meters && customer.meters.length > 0) {
         const meter = customer.meters[0];
         document.getElementById('meterNumber').value = meter.meter_number || '';
         document.getElementById('meterType').value = meter.meter_type || '';
-        document.getElementById('installationDate').value = meter.installation_date || '';
+        // installation_date field tidak ada di form HTML Anda, jadi kita abaikan
     }
 }
 
@@ -1210,24 +884,37 @@ async function saveCustomer() {
     saveButton.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Menyimpan...';
     
     try {
-        // Simulate API call with delay like in user management
-        await new Promise(resolve => setTimeout(resolve, 1500));
-        
-        // Simulate validation errors occasionally for demo
-        if (Math.random() < 0.1) { // 10% chance of error for demo
-            throw {
-                response: {
-                    data: {
-                        errors: {
-                            phone: ['Nomor telepon sudah digunakan'],
-                            ktp_number: ['Nomor KTP sudah terdaftar']
-                        }
-                    }
-                }
+        let response;
+        if (isEditMode) {
+            // Edit mode: Use PUT /api/customers/{id}
+            response = await axios.put(`/api/customers/${currentCustomerId}`, formData);
+            showSuccess('Data pelanggan berhasil diupdate');
+        } else {
+            // Create mode: Use POST /api/customers
+            
+            // Format payload sesuai dengan API CustomerController@store yang mengharapkan array 'meters'
+            const meterData = {
+                meter_number: formData.meter_number,
+                meter_type: formData.meter_type,
+                customer_group_code: formData.tariff_group, 
+                meter_size: '1/2"', // Default size
+                installation_date: new Date().toISOString().split('T')[0] // Default today's date
             };
+            
+            const payload = {
+                name: formData.name,
+                email: formData.email,
+                phone: formData.phone,
+                password: formData.password,
+                ktp_number: formData.ktp_number,
+                address: formData.address,
+                meters: [meterData] // Kirim sebagai array
+            };
+            
+            response = await axios.post('/api/customers', payload);
+            showSuccess('Pelanggan baru berhasil ditambahkan');
         }
         
-        showSuccess(isEditMode ? 'Data pelanggan berhasil diupdate' : 'Pelanggan baru berhasil ditambahkan');
         bootstrap.Modal.getInstance(document.getElementById('customerModal')).hide();
         searchCustomers(currentPage);
         loadCustomerStats();
@@ -1252,12 +939,12 @@ function collectFormData() {
         tariff_group: document.getElementById('tariffGroup').value,
         meter_number: document.getElementById('meterNumber').value,
         meter_type: document.getElementById('meterType').value,
-        installation_date: document.getElementById('installationDate').value
+        // installation_date: document.getElementById('installationDate')?.value,
     };
     
-    // Add password only if provided
+    // Add password only if provided or in create mode
     const password = document.getElementById('customerPassword').value;
-    if (password) {
+    if (password || !isEditMode) {
         formData.password = password;
     }
     
@@ -1277,13 +964,20 @@ async function viewCustomerDetail(customerId) {
     const modal = new bootstrap.Modal(document.getElementById('customerDetailModal'));
     modal.show();
     
+    // Set loading content
+    document.getElementById('customerDetailContent').innerHTML = `
+        <div class="text-center py-5">
+            <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Loading...</span>
+            </div>
+            <p class="mt-2 text-muted">Memuat detail pelanggan...</p>
+        </div>
+    `;
+
     try {
-        // Simulate API delay
-        await new Promise(resolve => setTimeout(resolve, 800));
-        
-        // Get customer from mock data
-        const allData = generateMockCustomers(1, 1000, '', '', '');
-        const customer = allData.data.find(c => c.id === customerId);
+        // Use API: CustomerController@show
+        const response = await axios.get(`/api/customers/${customerId}`);
+        const customer = response.data.data;
         
         if (!customer) {
             throw new Error('Customer tidak ditemukan');
@@ -1295,7 +989,7 @@ async function viewCustomerDetail(customerId) {
         document.getElementById('customerDetailContent').innerHTML = `
             <div class="text-center py-5">
                 <i class="fas fa-exclamation-triangle fa-3x text-danger mb-3"></i>
-                <p class="text-danger">Gagal memuat detail pelanggan</p>
+                <p class="text-danger">Gagal memuat detail pelanggan: ${error.response?.data?.message || error.message}</p>
             </div>
         `;
     }
@@ -1303,6 +997,38 @@ async function viewCustomerDetail(customerId) {
 
 // REQ-F-3.3: Display Customer Detail
 function displayCustomerDetail(customer) {
+    // Ambil tarif dari customer.tariff_group (dari tabel customers)
+    const primaryTariff = customer.tariff_group || (customer.meters && customer.meters.length > 0 ? customer.meters[0].customer_group_code : 'N/A');
+    
+    const meterDetailHtml = customer.meters && customer.meters.length > 0 ? 
+        customer.meters.map(meter => `
+            <div class="card border mb-3">
+                <div class="card-body">
+                    <div class="row text-center text-md-start">
+                        <div class="col-md-3 mb-2 mb-md-0">
+                            <strong>No. Meter:</strong><br>
+                            <span class="text-primary h5">${meter.meter_number}</span>
+                        </div>
+                        <div class="col-md-3 mb-2 mb-md-0">
+                            <strong>Jenis:</strong><br>
+                            <span class="badge bg-info">${meter.meter_type}</span>
+                        </div>
+                        <div class="col-md-3 mb-2 mb-md-0">
+                            <strong>Tgl. Instalasi:</strong><br>
+                            ${formatDate(meter.installation_date)}
+                        </div>
+                        <div class="col-md-3">
+                            <strong>Status:</strong><br>
+                            <span class="badge ${meter.is_active ? 'bg-success' : 'bg-danger'}">
+                                ${meter.is_active ? 'Aktif' : 'Non-Aktif'}
+                            </span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `).join('') : 
+        '<div class="text-center py-3"><p class="text-muted">Tidak ada data meter</p></div>';
+
     const content = `
         <div class="row">
             <div class="col-lg-6 mb-4">
@@ -1361,9 +1087,9 @@ function displayCustomerDetail(customer) {
                                 <td>${customer.address || '-'}</td>
                             </tr>
                             <tr>
-                                <td class="text-muted">Golongan Tarif:</td>
+                                <td class="text-muted">Golongan Tarif Utama:</td>
                                 <td>
-                                    <span class="badge bg-secondary">${customer.tariff_group || '-'}</span>
+                                    <span class="badge bg-secondary">${primaryTariff}</span>
                                 </td>
                             </tr>
                         </table>
@@ -1379,35 +1105,7 @@ function displayCustomerDetail(customer) {
                         <h6 class="mb-0"><i class="fas fa-tachometer-alt me-2"></i>Informasi Meter</h6>
                     </div>
                     <div class="card-body">
-                        ${customer.meters && customer.meters.length > 0 ? 
-                            customer.meters.map(meter => `
-                                <div class="card border mb-3">
-                                    <div class="card-body">
-                                        <div class="row text-center text-md-start">
-                                            <div class="col-md-3 mb-2 mb-md-0">
-                                                <strong>No. Meter:</strong><br>
-                                                <span class="text-primary h5">${meter.meter_number}</span>
-                                            </div>
-                                            <div class="col-md-3 mb-2 mb-md-0">
-                                                <strong>Jenis:</strong><br>
-                                                <span class="badge bg-info">${meter.meter_type}</span>
-                                            </div>
-                                            <div class="col-md-3 mb-2 mb-md-0">
-                                                <strong>Tgl. Instalasi:</strong><br>
-                                                ${formatDate(meter.installation_date)}
-                                            </div>
-                                            <div class="col-md-3">
-                                                <strong>Status:</strong><br>
-                                                <span class="badge ${meter.is_active ? 'bg-success' : 'bg-danger'}">
-                                                    ${meter.is_active ? 'Aktif' : 'Non-Aktif'}
-                                                </span>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            `).join('') : 
-                            '<div class="text-center py-3"><p class="text-muted">Tidak ada data meter</p></div>'
-                        }
+                        ${meterDetailHtml}
                     </div>
                 </div>
             </div>
@@ -1458,13 +1156,8 @@ async function confirmDeleteCustomer(customerId) {
     }
     
     try {
-        // Simulate API delay like in user management
-        await new Promise(resolve => setTimeout(resolve, 1000));
-        
-        // Simulate occasional error for demo
-        if (Math.random() < 0.05) { // 5% chance of error
-            throw new Error('Tidak dapat menghapus pelanggan yang memiliki tagihan aktif');
-        }
+        // Use API: CustomerController@destroy
+        await axios.delete(`/api/customers/${customerId}`);
         
         showSuccess('Pelanggan berhasil dihapus');
         searchCustomers(currentPage);
@@ -1549,46 +1242,19 @@ function sortTable(field) {
         sortDirection = 'asc';
     }
     
-    // Show loading state for sorting
     showTableLoading(true);
-    
-    // Apply sorting and refresh data
     searchCustomers(1);
-    
-    // Update visual indicators
     updateSortIcons(field);
 }
 
 function updateSortIcons(activeField) {
-    // Reset all sort icons
     document.querySelectorAll('.sort-icon').forEach(icon => {
         icon.className = 'fas fa-sort ms-2 text-muted sort-icon';
     });
     
-    // Set active sort icon
     const activeIcon = document.querySelector(`.sort-icon[data-field="${activeField}"]`);
     if (activeIcon) {
         activeIcon.className = `fas fa-sort-${sortDirection === 'asc' ? 'up' : 'down'} ms-2 text-primary sort-icon`;
-    }
-}
-
-// Enhanced loading states
-function showTableLoading(show) {
-    const tbody = document.getElementById('customersTableBody');
-    
-    if (show) {
-        tbody.innerHTML = `
-            <tr>
-                <td colspan="9" class="text-center py-4">
-                    <div class="d-flex flex-column align-items-center">
-                        <div class="spinner-border text-primary mb-2" role="status">
-                            <span class="visually-hidden">Loading...</span>
-                        </div>
-                        <small class="text-muted">Memproses data...</small>
-                    </div>
-                </td>
-            </tr>
-        `;
     }
 }
 
@@ -1638,7 +1304,7 @@ function updatePagination(data) {
     
     paginationInfo.textContent = `Menampilkan ${data.from || 0} - ${data.to || 0} dari ${data.total || 0} data`;
     
-    if (!data.last_page || data.last_page <= 1) {
+    if (data.last_page <= 1) {
         paginationList.innerHTML = '';
         return;
     }
@@ -1701,6 +1367,31 @@ function showLoading(show) {
         loadingState.classList.add('d-none');
         tableContainer.classList.remove('d-none');
     }
+    if (!show) {
+        showTableLoading(false);
+    }
+}
+
+function showTableLoading(show) {
+    const tbody = document.getElementById('customersTableBody');
+    const loadingState = document.getElementById('loadingState');
+    
+    if (loadingState.classList.contains('d-none')) {
+        if (show) {
+            tbody.innerHTML = `
+                <tr>
+                    <td colspan="9" class="text-center py-4">
+                        <div class="d-flex flex-column align-items-center">
+                            <div class="spinner-border text-primary mb-2" role="status">
+                                <span class="visually-hidden">Loading...</span>
+                            </div>
+                            <small class="text-muted">Memproses data...</small>
+                        </div>
+                    </td>
+                </tr>
+            `;
+        }
+    }
 }
 
 function showSuccess(message) {
@@ -1729,17 +1420,31 @@ function clearAllValidationErrors() {
 }
 
 function handleApiError(error, defaultMessage) {
-    if (error.response?.data?.errors) {
+    if (error?.response?.data?.errors) {
         // Handle validation errors
         Object.keys(error.response.data.errors).forEach(field => {
-            const element = document.querySelector(`[name="${field}"], #${field}`);
+            // Mapping fields untuk error API ke ID HTML
+            const formFieldId = {
+                'name': 'customerName',
+                'phone': 'customerPhone',
+                'email': 'customerEmail',
+                'ktp_number': 'ktpNumber',
+                'address': 'customerAddress',
+                'meters.0.meter_number': 'meterNumber',
+                'meters.0.customer_group_code': 'tariffGroup',
+                'meters.0.meter_type': 'meterType',
+                'password': 'customerPassword',
+                'tariff_group': 'tariffGroup'
+            }[field] || field;
+
+            const element = document.getElementById(formFieldId);
             if (element && error.response.data.errors[field][0]) {
                 showFieldError(element, error.response.data.errors[field][0]);
             }
         });
     } else {
         // Handle general errors
-        const message = error.response?.data?.message || defaultMessage;
+        const message = error?.response?.data?.message || defaultMessage;
         showError(message);
     }
 }
