@@ -16,6 +16,9 @@ class DatabaseSeeder extends Seeder
         $this->call([
             DefaultUsersSeeder::class,
             NotificationTemplateSeeder::class,
+            CustomerGroupSeeder::class,
+            MeterAdminFeeSeeder::class,
+            TestDataSeeder::class
         ]);
     }
 }

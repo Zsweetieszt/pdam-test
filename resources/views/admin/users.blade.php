@@ -491,13 +491,80 @@ let sortDirection = 'desc';
 let deleteUserId = null;
 let roles = [];
 let isEditMode = false;
+let currentUserId = null;
+
+// ===================================
+// START PERBAIKAN: Utility Functions (Missing functions)
+// ===================================
+
+/**
+ * Mendapatkan headers otentikasi.
+ * Mengasumsikan token JWT/Sanctum disimpan di meta tag 'api-token'
+ * atau menggunakan X-CSRF-TOKEN untuk otentikasi session.
+ */
+function getAuthHeaders() {
+    const token = document.querySelector('meta[name="api-token"]')?.getAttribute('content');
+    const headers = {};
+    
+    // Fallback: Jika menggunakan session/web guard, kirim X-CSRF-TOKEN
+    headers['X-CSRF-TOKEN'] = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+    
+    // API Authorization (Bearer Token - Sesuai error 401)
+    if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+    }
+    
+    return headers;
+}
+
+// Fungsi dummy/placeholder untuk showLoading dan showTableLoading
+function showLoading(show) {
+    const spinner = document.getElementById('mainSpinner');
+    if (spinner) {
+        spinner.style.display = show ? 'block' : 'none';
+    }
+    // Implementasi real: bisa mematikan/menghidupkan overlay loading global
+    showTableLoading(show);
+}
+
+function showTableLoading(show) {
+    const tbody = document.getElementById('usersTableBody');
+    if (tbody) {
+        if (show) {
+            tbody.innerHTML = `
+                <tr>
+                    <td colspan="8" class="text-center py-5">
+                        <div class="spinner-border spinner-border-sm text-primary me-2" role="status">
+                            <span class="visually-hidden">Loading...</span>
+                        </div>
+                        Memuat data...
+                    </td>
+                </tr>
+            `;
+        } else {
+            // Biarkan data ditampilkan atau akan diisi oleh displayUsers
+        }
+    }
+}
+// ===================================
+// END PERBAIKAN: Utility Functions
+// ===================================
 
 // Initialize when page loads
 document.addEventListener('DOMContentLoaded', function() {
+    if (typeof window.axios === 'undefined') {
+        console.error('Axios tidak ditemukan. Pastikan sudah di-include.');
+    }
+    
+    // Mengatur header default Axios untuk token otentikasi (opsional, tapi bagus)
+    // Walaupun kita akan mengirim secara eksplisit per API call di sini.
+    axios.defaults.headers.common = getAuthHeaders();
+    
     setupSearchHandlers();
     loadRoles();
     loadUserStats();
-    searchUsers();
+    searchUsers(); // Load table data from API on start
+    setupFormSubmission();
 });
 
 // Enhanced search handlers - REQ-F-10.2
@@ -535,171 +602,120 @@ function setupSearchHandlers() {
     });
 }
 
-// Load user statistics
+// Load user statistics dari API /api/admin/dashboard-stats
 async function loadUserStats() {
     // Set loading state
     ['total-users', 'active-users', 'admin-count', 'customer-count'].forEach(id => {
-        document.getElementById(id).textContent = '...';
+        const el = document.getElementById(id);
+        if (el) el.textContent = '...';
     });
     
     try {
-        // Simulate delay
-        await new Promise(resolve => setTimeout(resolve, 500));
+        // START PERBAIKAN: Tambahkan headers otentikasi
+        const response = await axios.get('/api/admin/dashboard-stats', {
+            headers: getAuthHeaders()
+        });
+        // END PERBAIKAN
         
-        // Calculate stats from mock data
-        const allData = generateMockUsers(1, 1000, '', '', '');
-        const totalUsers = allData.data.length;
-        const activeUsers = allData.data.filter(u => u.is_active).length;
-        const adminCount = allData.data.filter(u => u.role.name === 'admin').length;
-        const customerCount = allData.data.filter(u => u.role.name === 'customer').length;
+        const stats = response.data.data;
         
-        document.getElementById('total-users').textContent = totalUsers;
-        document.getElementById('active-users').textContent = activeUsers;
-        document.getElementById('admin-count').textContent = adminCount;
-        document.getElementById('customer-count').textContent = customerCount;
+        document.getElementById('total-users').textContent = stats.users.total;
+        document.getElementById('active-users').textContent = stats.users.active;
+        document.getElementById('admin-count').textContent = stats.users.admin;
+        document.getElementById('customer-count').textContent = stats.users.customer;
     } catch (error) {
         console.error('Error loading stats:', error);
-        // Set default values
+        handleApiError(error, 'Gagal memuat statistik dashboard!');
+        // Set default values on error
         ['total-users', 'active-users', 'admin-count', 'customer-count'].forEach(id => {
-            document.getElementById(id).textContent = '0';
+            const el = document.getElementById(id);
+            if (el) el.textContent = '0';
         });
     }
 }
 
-// Load roles for dropdown
+// Load roles for dropdown dari API /api/admin/roles
 async function loadRoles() {
     try {
-        roles = [
-            {id: 1, name: 'admin', description: 'Administrator'},
-            {id: 2, name: 'keuangan', description: 'Staff Keuangan'},
-            {id: 3, name: 'manajemen', description: 'Manajemen'},
-            {id: 4, name: 'customer', description: 'Customer'}
-        ];
+        // START PERBAIKAN: Tambahkan headers otentikasi
+        const response = await axios.get('/api/admin/roles', {
+            headers: getAuthHeaders()
+        });
+        // END PERBAIKAN
+        
+        roles = response.data.data;
         
         const roleSelect = document.getElementById('userRole');
+        const roleFilter = document.getElementById('roleFilter');
+        
+        if (!roleSelect || !roleFilter) return;
+        
+        // Populate modal role select
         roleSelect.innerHTML = '<option value="">Pilih Role</option>';
         roles.forEach(role => {
-            roleSelect.innerHTML += `<option value="${role.id}">${role.description}</option>`;
+            const description = role.name.charAt(0).toUpperCase() + role.name.slice(1);
+            roleSelect.innerHTML += `<option value="${role.id}">${description}</option>`;
         });
+
+        // Populate filter role select
+        roleFilter.innerHTML = '<option value="">Semua Role</option>';
+        roles.forEach(role => {
+            const description = role.name.charAt(0).toUpperCase() + role.name.slice(1);
+            roleFilter.innerHTML += `<option value="${role.name}">${description}</option>`;
+        });
+
     } catch (error) {
         console.error('Error loading roles:', error);
+        showAlert('Gagal memuat data roles!', 'danger');
     }
 }
 
-// Enhanced search function - REQ-F-10.1 & REQ-F-10.2
+// Enhanced search function - REQ-F-10.1 & REQ-F-10.2 menggunakan API /api/datatables/users
 async function searchUsers(page = 1) {
     showLoading(true);
     
     const searchTerm = document.getElementById('searchInput').value;
-    const roleFilter = document.getElementById('roleFilter').value;
+    const roleFilterName = document.getElementById('roleFilter').value; // Ambil role name dari filter
     const statusFilter = document.getElementById('statusFilter').value;
     
+    // Cari role_id berdasarkan role name yang dipilih di filter
+    const roleFilterId = roles.find(r => r.name === roleFilterName)?.id;
+
     try {
-        // Simulate API delay
-        await new Promise(resolve => setTimeout(resolve, 800));
+        // START PERBAIKAN: Tambahkan headers otentikasi
+        const response = await axios.get('/api/datatables/users', {
+            headers: getAuthHeaders(),
+            params: {
+                page: page,
+                per_page: perPage,
+                sort_field: sortField,
+                sort_direction: sortDirection,
+                search: searchTerm,
+                // Filters sesuai API DataTableController.php
+                filters: JSON.stringify({
+                    role_id: roleFilterId, // Kirim ID role
+                    is_active: statusFilter === '1' ? true : (statusFilter === '0' ? false : undefined)
+                })
+            }
+        });
+        // END PERBAIKAN
+
+        const data = response.data.data; 
+        const pagination = response.data.meta.pagination;
+
+        displayUsers({ data: data, current_page: pagination.current_page, per_page: pagination.per_page, total: pagination.total, last_page: pagination.last_page, from: pagination.from, to: pagination.to });
+        updatePagination({ current_page: pagination.current_page, last_page: pagination.last_page, total: pagination.total, per_page: pagination.per_page, from: pagination.from, to: pagination.to });
         
-        // Use mock data with enhanced filtering and sorting
-        const mockData = generateMockUsers(page, perPage, searchTerm, roleFilter, statusFilter);
-        
-        displayUsers(mockData);
-        updatePagination(mockData);
         currentPage = page;
     } catch (error) {
         console.error('Error loading users:', error);
-        handleApiError(error, 'Gagal memuat data user');
+        handleApiError(error, 'Gagal memuat data user. Pastikan API datatables/users berfungsi dan terotentikasi.');
     } finally {
         showLoading(false);
     }
 }
 
-// Enhanced mock data generator with sorting support - REQ-F-10.3
-function generateMockUsers(page, perPage, search, roleFilter, statusFilter) {
-    const allUsers = [
-        {id: 1, name: 'Admin PDAM', phone: '08111111111', email: 'admin@pdam.com', role: {name: 'admin', description: 'Administrator'}, is_active: true, created_at: '2024-01-01'},
-        {id: 2, name: 'Staff Keuangan 1', phone: '08222222222', email: 'keuangan1@pdam.com', role: {name: 'keuangan', description: 'Staff Keuangan'}, is_active: true, created_at: '2024-01-02'},
-        {id: 3, name: 'Staff Keuangan 2', phone: '08222222223', email: 'keuangan2@pdam.com', role: {name: 'keuangan', description: 'Staff Keuangan'}, is_active: false, created_at: '2024-01-03'},
-        {id: 4, name: 'Manager PDAM', phone: '08333333333', email: 'manager@pdam.com', role: {name: 'manajemen', description: 'Manajemen'}, is_active: true, created_at: '2024-01-04'},
-        {id: 5, name: 'Budi Santoso', phone: '08444444444', email: 'budi.santoso@gmail.com', role: {name: 'customer', description: 'Customer'}, is_active: true, created_at: '2024-01-05'},
-        {id: 6, name: 'Siti Rahayu', phone: '08555555555', email: 'siti.rahayu@gmail.com', role: {name: 'customer', description: 'Customer'}, is_active: true, created_at: '2024-01-06'},
-        {id: 7, name: 'Ahmad Hidayat', phone: '08666666666', email: 'ahmad.hidayat@gmail.com', role: {name: 'customer', description: 'Customer'}, is_active: false, created_at: '2024-01-07'},
-        {id: 8, name: 'Maria Gonzalez', phone: '08777777777', email: 'maria.gonzalez@outlook.com', role: {name: 'customer', description: 'Customer'}, is_active: true, created_at: '2024-01-08'},
-        {id: 9, name: 'Dewi Sartika', phone: '08888888888', email: 'dewi.sartika@yahoo.com', role: {name: 'customer', description: 'Customer'}, is_active: true, created_at: '2024-01-09'},
-        {id: 10, name: 'Bambang Setiawan', phone: '08999999999', email: null, role: {name: 'customer', description: 'Customer'}, is_active: false, created_at: '2024-01-10'}
-    ];
-    
-    // Apply filters first
-    let filteredUsers = allUsers;
-    
-    if (search) {
-        const searchLower = search.toLowerCase();
-        filteredUsers = filteredUsers.filter(user => 
-            user.name.toLowerCase().includes(searchLower) ||
-            user.phone.includes(search) ||
-            (user.email && user.email.toLowerCase().includes(searchLower))
-        );
-    }
-    
-    if (roleFilter) {
-        filteredUsers = filteredUsers.filter(user => user.role.name === roleFilter);
-    }
-    
-    if (statusFilter !== '') {
-        const isActive = statusFilter === '1';
-        filteredUsers = filteredUsers.filter(user => user.is_active === isActive);
-    }
-    
-    // Apply sorting - REQ-F-10.3
-    filteredUsers.sort((a, b) => {
-        let valueA, valueB;
-        
-        switch(sortField) {
-            case 'id':
-                valueA = a.id;
-                valueB = b.id;
-                break;
-            case 'name':
-                valueA = a.name || '';
-                valueB = b.name || '';
-                break;
-            case 'created_at':
-                valueA = new Date(a.created_at);
-                valueB = new Date(b.created_at);
-                break;
-            default:
-                valueA = a.id;
-                valueB = b.id;
-        }
-        
-        // Handle different data types
-        if (valueA instanceof Date && valueB instanceof Date) {
-            return sortDirection === 'asc' 
-                ? valueA.getTime() - valueB.getTime()
-                : valueB.getTime() - valueA.getTime();
-        } else if (typeof valueA === 'number' && typeof valueB === 'number') {
-            return sortDirection === 'asc' ? valueA - valueB : valueB - valueA;
-        } else {
-            const comparison = valueA.toString().localeCompare(valueB.toString(), 'id-ID');
-            return sortDirection === 'asc' ? comparison : -comparison;
-        }
-    });
-    
-    // Apply pagination - REQ-F-10.4
-    const startIndex = (page - 1) * parseInt(perPage);
-    const endIndex = startIndex + parseInt(perPage);
-    const paginatedUsers = filteredUsers.slice(startIndex, endIndex);
-    
-    return {
-        data: paginatedUsers,
-        current_page: parseInt(page),
-        per_page: parseInt(perPage),
-        total: filteredUsers.length,
-        last_page: Math.ceil(filteredUsers.length / parseInt(perPage)),
-        from: filteredUsers.length === 0 ? 0 : startIndex + 1,
-        to: Math.min(endIndex, filteredUsers.length)
-    };
-}
-
-// Enhanced display users function - REQ-F-10.1
+// Display users function (disesuaikan untuk struktur data API)
 function displayUsers(data) {
     const tbody = document.getElementById('usersTableBody');
     
@@ -721,6 +737,9 @@ function displayUsers(data) {
     tbody.innerHTML = data.data.map((user, index) => {
         const rowNumber = ((currentPage - 1) * perPage) + index + 1;
         
+        const roleName = user.role?.name || 'unknown';
+        const roleDescription = roles.find(r => r.id === user.role_id)?.description || roleName.charAt(0).toUpperCase() + roleName.slice(1);
+
         return `
             <tr class="hover-shadow">
                 <td>
@@ -732,7 +751,7 @@ function displayUsers(data) {
                 <td>
                     <div class="d-flex align-items-center">
                         <div class="avatar-circle me-3">
-                            ${user.name.charAt(0).toUpperCase()}
+                            ${user.name ? user.name.charAt(0).toUpperCase() : '?'}
                         </div>
                         <div>
                             <div class="fw-bold text-dark">${user.name}</div>
@@ -752,7 +771,7 @@ function displayUsers(data) {
                     </div>
                 </td>
                 <td class="d-none d-sm-table-cell text-center">
-                    <span class="badge ${getRoleBadgeClass(user.role.name)}">${user.role.description}</span>
+                    <span class="badge ${getRoleBadgeClass(roleName)}">${roleDescription}</span>
                 </td>
                 <td class="text-center">
                     <span class="badge ${user.is_active ? 'bg-success' : 'bg-danger'}">
@@ -791,7 +810,256 @@ function displayUsers(data) {
     });
 }
 
-// Helper functions
+// Load single user data for edit modal - menggunakan API /api/admin/users/{id}
+async function editUser(userId) {
+    currentUserId = userId;
+    
+    showLoading(true);
+    
+    try {
+        // START PERBAIKAN: Tambahkan headers otentikasi
+        const response = await axios.get(`/api/admin/users/${userId}`, {
+            headers: getAuthHeaders()
+        });
+        // END PERBAIKAN
+        
+        const user = response.data.data;
+        
+        if (!user) {
+            showAlert('User tidak ditemukan!', 'danger');
+            return;
+        }
+        
+        openUserModal('edit', user);
+        
+    } catch (error) {
+        console.error('Error fetching user data:', error);
+        handleApiError(error, 'Error mengambil data user!');
+    } finally {
+        showLoading(false);
+    }
+}
+
+// Function untuk submit form (Create/Update)
+function setupFormSubmission() {
+    document.getElementById('userForm').addEventListener('submit', async function(e) {
+        e.preventDefault();
+        
+        const btn = document.getElementById('saveUserBtn');
+        const text = document.getElementById('saveUserText');
+        const spinner = document.getElementById('saveUserSpinner');
+        
+        btn.disabled = true;
+        text.style.display = 'none';
+        spinner.style.display = 'inline-block';
+        clearFormErrors();
+        
+        const formData = {
+            name: document.getElementById('userName').value,
+            phone: document.getElementById('userPhone').value,
+            email: document.getElementById('userEmail').value,
+            password: document.getElementById('userPassword').value,
+            password_confirmation: document.getElementById('userPasswordConfirm').value,
+            role_id: document.getElementById('userRole').value,
+            is_active: document.getElementById('userIsActive').checked
+        };
+        
+        const isEdit = currentUserId !== null;
+        const method = isEdit ? 'PUT' : 'POST';
+        const url = isEdit ? `/api/admin/users/${currentUserId}` : '/api/admin/users';
+        
+        try {
+            // Jika edit mode dan password kosong, hapus field password dari request
+            if (isEdit && !formData.password) {
+                delete formData.password;
+                delete formData.password_confirmation;
+            }
+            
+            // START PERBAIKAN: Tambahkan headers otentikasi
+            const response = await axios({ method: method, url: url, data: formData, headers: getAuthHeaders() });
+            // END PERBAIKAN
+            
+            const modal = bootstrap.Modal.getInstance(document.getElementById('userModal'));
+            modal.hide();
+            
+            showAlert(isEdit ? 'User berhasil diperbarui!' : 'User berhasil ditambah!', 'success');
+            searchUsers(currentPage);
+            loadUserStats();
+            
+        } catch (error) {
+            handleApiError(error, 'Gagal menyimpan data user');
+        } finally {
+            btn.disabled = false;
+            text.style.display = 'inline';
+            spinner.style.display = 'none';
+        }
+    });
+}
+
+// Delete user API call - menggunakan API /api/admin/users/{id}
+async function confirmDelete() {
+    const btn = document.getElementById('confirmDeleteBtn');
+    const text = document.getElementById('deleteText');
+    const spinner = document.getElementById('deleteSpinner');
+    
+    try {
+        btn.disabled = true;
+        text.style.display = 'none';
+        spinner.style.display = 'inline-block';
+        
+        // START PERBAIKAN: Tambahkan headers otentikasi
+        await axios.delete(`/api/admin/users/${deleteUserId}`, {
+            headers: getAuthHeaders()
+        });
+        // END PERBAIKAN
+        
+        const modal = bootstrap.Modal.getInstance(document.getElementById('deleteModal'));
+        modal.hide();
+        
+        showAlert('User berhasil dihapus!', 'success');
+        searchUsers(currentPage);
+        loadUserStats();
+        
+    } catch (error) {
+        console.error('Error deleting user:', error);
+        handleApiError(error, 'Error menghapus user!');
+    } finally {
+        btn.disabled = false;
+        text.style.display = 'inline';
+        spinner.style.display = 'none';
+    }
+}
+
+// Fungsi openUserModal disesuaikan untuk mode edit
+function openUserModal(action, userData = null) {
+    const modal = new bootstrap.Modal(document.getElementById('userModal'));
+    const form = document.getElementById('userForm');
+    const title = document.getElementById('modalTitle');
+    
+    form.reset();
+    clearFormErrors();
+    isEditMode = action === 'edit';
+    currentUserId = userData ? userData.id : null;
+
+    const passwordRequired = document.getElementById('passwordRequired');
+    const confirmPasswordRequired = document.getElementById('confirmPasswordRequired');
+    const userPassword = document.getElementById('userPassword');
+    const userPasswordConfirm = document.getElementById('userPasswordConfirm');
+    
+    // Default mode: Add User
+    title.innerHTML = '<i class="fas fa-user-plus me-2"></i>Tambah User Baru';
+    document.getElementById('userId').value = '';
+    passwordRequired.style.display = 'inline';
+    confirmPasswordRequired.style.display = 'inline';
+    userPassword.required = true;
+    userPasswordConfirm.required = true;
+    document.getElementById('userIsActive').checked = true;
+
+    if (action === 'edit' && userData) {
+        title.innerHTML = '<i class="fas fa-user-edit me-2"></i>Edit User';
+        
+        // Hide password required indicator, make fields optional
+        passwordRequired.style.display = 'none';
+        confirmPasswordRequired.style.display = 'none';
+        userPassword.required = false;
+        userPasswordConfirm.required = false;
+
+        // Populate form
+        document.getElementById('userId').value = userData.id;
+        document.getElementById('userName').value = userData.name;
+        document.getElementById('userPhone').value = userData.phone;
+        document.getElementById('userEmail').value = userData.email || '';
+        document.getElementById('userIsActive').checked = userData.is_active;
+        
+        // Set role dropdown
+        const roleId = roles.find(r => r.name === userData.role.name)?.id;
+        if (roleId) {
+            document.getElementById('userRole').value = roleId;
+        }
+        
+        // Clear password fields (do not display old password)
+        userPassword.value = '';
+        userPasswordConfirm.value = '';
+    }
+    
+    modal.show();
+}
+
+// Fungsi deleteUser tetap, hanya memastikan admin tidak bisa dihapus
+function deleteUser(userId, userName) {
+    deleteUserId = userId;
+    document.getElementById('deleteUserName').textContent = userName;
+    const modal = new bootstrap.Modal(document.getElementById('deleteModal'));
+    modal.show();
+}
+
+
+// Utility functions (sedikit disesuaikan)
+function resetFilters() {
+    document.getElementById('searchInput').value = '';
+    document.getElementById('roleFilter').value = '';
+    document.getElementById('statusFilter').value = '';
+    searchUsers(1);
+}
+
+function clearFormErrors() {
+    document.querySelectorAll('.is-invalid').forEach(el => el.classList.remove('is-invalid'));
+    document.querySelectorAll('.invalid-feedback').forEach(el => el.textContent = '');
+}
+
+function handleApiError(error, defaultMessage) {
+    if (error?.response?.status === 401) {
+        showAlert('Sesi Anda telah berakhir atau tidak sah. Mohon login ulang.', 'warning');
+        console.error('Unauthorized Access (401):', error.response.data);
+    } else if (error?.response?.data?.errors) {
+        // Handle validation errors for modal
+        Object.keys(error.response.data.errors).forEach(field => {
+            const formFieldId = {
+                'name': 'userName',
+                'phone': 'userPhone',
+                'email': 'userEmail',
+                'password': 'userPassword',
+                'password_confirmation': 'userPasswordConfirm',
+                'role_id': 'userRole',
+                'is_active': 'userIsActive'
+            }[field] || field;
+
+            const element = document.getElementById(formFieldId);
+            const message = error.response.data.errors[field][0];
+            
+            if (element) {
+                element.classList.add('is-invalid');
+                const feedback = document.getElementById(field + 'Error');
+                if (feedback) {
+                    feedback.textContent = message;
+                }
+            }
+        });
+    } else {
+        // Handle general errors
+        const message = error?.response?.data?.message || error.message || defaultMessage;
+        showAlert(message, 'danger');
+    }
+}
+
+function showAlert(message, type) {
+    const alertDiv = document.createElement('div');
+    alertDiv.className = `alert alert-${type} alert-dismissible fade show position-fixed`;
+    alertDiv.style.cssText = 'top: 20px; right: 20px; z-index: 9999; min-width: 300px;';
+    alertDiv.innerHTML = `
+        ${message}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    `;
+    
+    document.body.appendChild(alertDiv);
+    
+    setTimeout(() => {
+        if (alertDiv.parentNode) {
+            alertDiv.remove();
+        }
+    }, 5000);
+}
+
 function getRoleBadgeClass(role) {
     switch(role) {
         case 'admin': return 'bg-danger';
@@ -812,52 +1080,19 @@ function formatDate(dateString) {
     });
 }
 
-// REQ-F-10.3: Enhanced sorting functionality
-function sortTable(field) {
-    // Update sort parameters
-    if (sortField === field) {
-        sortDirection = sortDirection === 'asc' ? 'desc' : 'asc';
-    } else {
-        sortField = field;
-        sortDirection = 'asc';
-    }
-    
-    // Show loading state for sorting
-    showTableLoading(true);
-    
-    // Apply sorting and refresh data
-    searchUsers(1);
-    
-    // Update visual indicators
-    updateSortIcons(field);
-}
-
-function updateSortIcons(activeField) {
-    // Reset all sort icons
-    document.querySelectorAll('.sort-icon').forEach(icon => {
-        icon.className = 'fas fa-sort ms-2 text-muted sort-icon';
-    });
-    
-    // Set active sort icon
-    const activeIcon = document.querySelector(`.sort-icon[data-field="${activeField}"]`);
-    if (activeIcon) {
-        activeIcon.className = `fas fa-sort-${sortDirection === 'asc' ? 'up' : 'down'} ms-2 text-primary sort-icon`;
-    }
-}
-
-// REQ-F-10.4: Enhanced pagination functionality
 function changePerPage() {
     perPage = parseInt(document.getElementById('perPageSelect').value);
     searchUsers(1);
 }
 
-function updatePagination(data) {
+// Update pagination untuk format response DataTableController
+function updatePagination(pagination) {
     const paginationInfo = document.getElementById('paginationInfo');
     const paginationList = document.getElementById('paginationList');
     
-    paginationInfo.textContent = `Menampilkan ${data.from || 0} - ${data.to || 0} dari ${data.total || 0} data`;
+    paginationInfo.textContent = `Menampilkan ${pagination.from || 0} - ${pagination.to || 0} dari ${pagination.total || 0} data`;
     
-    if (!data.last_page || data.last_page <= 1) {
+    if (!pagination.last_page || pagination.last_page <= 1) {
         paginationList.innerHTML = '';
         return;
     }
@@ -865,10 +1100,10 @@ function updatePagination(data) {
     let paginationHtml = '';
     
     // Previous button
-    if (data.current_page > 1) {
+    if (pagination.current_page > 1) {
         paginationHtml += `
             <li class="page-item">
-                <a class="page-link" href="#" onclick="searchUsers(${data.current_page - 1})">
+                <a class="page-link" href="#" onclick="searchUsers(${pagination.current_page - 1})">
                     <i class="fas fa-chevron-left"></i>
                 </a>
             </li>
@@ -876,22 +1111,22 @@ function updatePagination(data) {
     }
     
     // Page numbers
-    const startPage = Math.max(1, data.current_page - 2);
-    const endPage = Math.min(data.last_page, data.current_page + 2);
+    const startPage = Math.max(1, pagination.current_page - 2);
+    const endPage = Math.min(pagination.last_page, pagination.current_page + 2);
     
     for (let i = startPage; i <= endPage; i++) {
         paginationHtml += `
-            <li class="page-item ${i === data.current_page ? 'active' : ''}">
+            <li class="page-item ${i === pagination.current_page ? 'active' : ''}">
                 <a class="page-link" href="#" onclick="searchUsers(${i})">${i}</a>
             </li>
         `;
     }
     
     // Next button
-    if (data.current_page < data.last_page) {
+    if (pagination.current_page < pagination.last_page) {
         paginationHtml += `
             <li class="page-item">
-                <a class="page-link" href="#" onclick="searchUsers(${data.current_page + 1})">
+                <a class="page-link" href="#" onclick="searchUsers(${pagination.current_page + 1})">
                     <i class="fas fa-chevron-right"></i>
                 </a>
             </li>
@@ -901,291 +1136,28 @@ function updatePagination(data) {
     paginationList.innerHTML = paginationHtml;
 }
 
-// Enhanced loading states
-function showTableLoading(show) {
-    const tbody = document.getElementById('usersTableBody');
-    
-    if (show) {
-        tbody.innerHTML = `
-            <tr>
-                <td colspan="8" class="text-center py-4">
-                    <div class="d-flex flex-column align-items-center">
-                        <div class="spinner-border text-primary mb-2" role="status">
-                            <span class="visually-hidden">Loading...</span>
-                        </div>
-                        <small class="text-muted">Memproses data...</small>
-                    </div>
-                </td>
-            </tr>
-        `;
-    }
-}
-
-function showLoading(show) {
-    const loadingState = document.getElementById('loadingState');
-    const tableContainer = document.getElementById('usersTableContainer');
-    
-    if (show) {
-        loadingState.classList.remove('d-none');
-        tableContainer.classList.add('d-none');
+function sortTable(field) {
+    if (sortField === field) {
+        sortDirection = sortDirection === 'asc' ? 'desc' : 'asc';
     } else {
-        loadingState.classList.add('d-none');
-        tableContainer.classList.remove('d-none');
-    }
-}
-
-// Modal and CRUD functions (keeping existing functionality)
-function openUserModal(action, userData = null) {
-    const modal = new bootstrap.Modal(document.getElementById('userModal'));
-    const form = document.getElementById('userForm');
-    const title = document.getElementById('modalTitle');
-    
-    // Reset form
-    form.reset();
-    clearFormErrors();
-    isEditMode = action === 'edit';
-    
-    if (action === 'add') {
-        title.innerHTML = '<i class="fas fa-user-plus me-2"></i>Tambah User Baru';
-        document.getElementById('userIsActive').checked = true;
-        document.getElementById('passwordRequired').style.display = 'inline';
-        document.getElementById('confirmPasswordRequired').style.display = 'inline';
-        document.getElementById('userPassword').required = true;
-        document.getElementById('userPasswordConfirm').required = true;
-        
-        // Clear hidden field
-        document.getElementById('userId').value = '';
-        
-    } else if (action === 'edit' && userData) {
-        title.innerHTML = '<i class="fas fa-user-edit me-2"></i>Edit User';
-        document.getElementById('passwordRequired').style.display = 'none';
-        document.getElementById('confirmPasswordRequired').style.display = 'none';
-        document.getElementById('userPassword').required = false;
-        document.getElementById('userPasswordConfirm').required = false;
-        
-        // Populate form dengan data user
-        document.getElementById('userId').value = userData.id;
-        document.getElementById('userName').value = userData.name;
-        document.getElementById('userPhone').value = userData.phone;
-        document.getElementById('userEmail').value = userData.email || '';
-        document.getElementById('userIsActive').checked = userData.is_active;
-        
-        // Set role dropdown
-        const roleId = roles.find(r => r.name === userData.role.name)?.id;
-        if (roleId) {
-            document.getElementById('userRole').value = roleId;
-        }
-        
-        // Clear password fields
-        document.getElementById('userPassword').value = '';
-        document.getElementById('userPasswordConfirm').value = '';
+        sortField = field;
+        sortDirection = 'asc';
     }
     
-    modal.show();
-}
-
-async function editUser(userId) {
-    try {
-        // Simulate API delay
-        await new Promise(resolve => setTimeout(resolve, 500));
-        
-        // Get user from mock data
-        const allData = generateMockUsers(1, 1000, '', '', '');
-        const user = allData.data.find(u => u.id === userId);
-        
-        if (!user) {
-            showAlert('User tidak ditemukan!', 'danger');
-            return;
-        }
-        
-        openUserModal('edit', user);
-        
-    } catch (error) {
-        console.error('Error fetching user data:', error);
-        showAlert('Error mengambil data user!', 'danger');
-    }
-}
-
-function deleteUser(userId, userName) {
-    // Check if trying to delete admin
-    const allData = generateMockUsers(1, 1000, '', '', '');
-    const user = allData.data.find(u => u.id === userId);
-    
-    if (user && user.role.name === 'admin') {
-        showAlert('Administrator tidak dapat dihapus dari sistem!', 'warning');
-        return;
-    }
-    
-    deleteUserId = userId;
-    document.getElementById('deleteUserName').textContent = userName;
-    const modal = new bootstrap.Modal(document.getElementById('deleteModal'));
-    modal.show();
-}
-
-async function confirmDelete() {
-    const btn = document.getElementById('confirmDeleteBtn');
-    const text = document.getElementById('deleteText');
-    const spinner = document.getElementById('deleteSpinner');
-    
-    try {
-        btn.disabled = true;
-        text.style.display = 'none';
-        spinner.style.display = 'inline-block';
-        
-        // Simulate API call
-        await new Promise(resolve => setTimeout(resolve, 1000));
-        
-        const modal = bootstrap.Modal.getInstance(document.getElementById('deleteModal'));
-        modal.hide();
-        
-        showAlert('User berhasil dihapus!', 'success');
-        searchUsers(currentPage);
-        loadUserStats();
-        
-    } catch (error) {
-        showAlert('Error menghapus user!', 'danger');
-    } finally {
-        btn.disabled = false;
-        text.style.display = 'inline';
-        spinner.style.display = 'none';
-    }
-}
-
-// Form submission handler
-document.getElementById('userForm').addEventListener('submit', async function(e) {
-    e.preventDefault();
-    
-    const btn = document.getElementById('saveUserBtn');
-    const text = document.getElementById('saveUserText');
-    const spinner = document.getElementById('saveUserSpinner');
-    
-    try {
-        btn.disabled = true;
-        text.style.display = 'none';
-        spinner.style.display = 'inline-block';
-        clearFormErrors();
-        
-        // Get form data
-        const formData = new FormData(this);
-        const data = Object.fromEntries(formData.entries());
-        
-        // Check if this is edit mode
-        const isEdit = data.user_id && data.user_id !== '';
-        
-        // Basic validation
-        if (!data.name || !data.phone || !data.role_id) {
-            throw new Error('Mohon lengkapi data yang wajib diisi');
-        }
-        
-        // Password validation - hanya required untuk user baru
-        if (!isEdit && (!data.password || !data.password_confirmation)) {
-            throw new Error('Password wajib diisi untuk user baru');
-        }
-        
-        if (data.password && data.password !== data.password_confirmation) {
-            throw new Error('Konfirmasi password tidak cocok');
-        }
-        
-        // Validasi format phone
-        if (!/^08\d{8,11}$/.test(data.phone)) {
-            throw new Error('Format nomor telepon tidak valid. Gunakan format: 08xxxxxxxxx');
-        }
-        
-        // Validasi password format (jika diisi)
-        if (data.password) {
-            const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{8,}$/;
-            if (!passwordRegex.test(data.password)) {
-                throw new Error('Password harus minimal 8 karakter dengan kombinasi huruf besar, kecil, dan angka');
-            }
-        }
-        
-        // Simulate API call with occasional errors
-        await new Promise(resolve => setTimeout(resolve, 1500));
-        
-        // Simulate validation errors occasionally for demo
-        if (Math.random() < 0.1) { // 10% chance of error for demo
-            throw {
-                response: {
-                    data: {
-                        errors: {
-                            phone: ['Nomor telepon sudah digunakan'],
-                            email: ['Email sudah terdaftar']
-                        }
-                    }
-                }
-            };
-        }
-        
-        const modal = bootstrap.Modal.getInstance(document.getElementById('userModal'));
-        modal.hide();
-        
-        showAlert(isEdit ? 'User berhasil diperbarui!' : 'User berhasil ditambah!', 'success');
-        searchUsers(currentPage);
-        loadUserStats();
-        
-    } catch (error) {
-        handleApiError(error, 'Gagal menyimpan data user');
-    } finally {
-        btn.disabled = false;
-        text.style.display = 'inline';
-        spinner.style.display = 'none';
-    }
-});
-
-// Utility functions
-function resetFilters() {
-    document.getElementById('searchInput').value = '';
-    document.getElementById('roleFilter').value = '';
-    document.getElementById('statusFilter').value = '';
+    showTableLoading(true);
     searchUsers(1);
+    updateSortIcons(field);
 }
 
-function clearFormErrors() {
-    document.querySelectorAll('.is-invalid').forEach(el => el.classList.remove('is-invalid'));
-    document.querySelectorAll('.invalid-feedback').forEach(el => el.textContent = '');
-}
-
-function handleApiError(error, defaultMessage) {
-    if (error.response?.data?.errors) {
-        // Handle validation errors
-        Object.keys(error.response.data.errors).forEach(field => {
-            const element = document.querySelector(`[name="${field}"], #${field}`);
-            if (element && error.response.data.errors[field][0]) {
-                showFieldError(element, error.response.data.errors[field][0]);
-            }
-        });
-    } else {
-        // Handle general errors
-        const message = error.response?.data?.message || error.message || defaultMessage;
-        showAlert(message, 'danger');
-    }
-}
-
-function showFieldError(field, message) {
-    field.classList.add('is-invalid');
-    const feedback = field.parentElement.querySelector('.invalid-feedback') || 
-                    field.parentElement.parentElement.querySelector('.invalid-feedback');
-    if (feedback) {
-        feedback.textContent = message;
-    }
-}
-
-function showAlert(message, type) {
-    const alertDiv = document.createElement('div');
-    alertDiv.className = `alert alert-${type} alert-dismissible fade show position-fixed`;
-    alertDiv.style.cssText = 'top: 20px; right: 20px; z-index: 9999; min-width: 300px;';
-    alertDiv.innerHTML = `
-        ${message}
-        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-    `;
+function updateSortIcons(activeField) {
+    document.querySelectorAll('.sort-icon').forEach(icon => {
+        icon.className = 'fas fa-sort ms-2 text-muted sort-icon';
+    });
     
-    document.body.appendChild(alertDiv);
-    
-    setTimeout(() => {
-        if (alertDiv.parentNode) {
-            alertDiv.remove();
-        }
-    }, 5000);
+    const activeIcon = document.querySelector(`.sort-icon[data-field="${activeField}"]`);
+    if (activeIcon) {
+        activeIcon.className = `fas fa-sort-${sortDirection === 'asc' ? 'up' : 'down'} ms-2 text-primary sort-icon`;
+    }
 }
 
 function togglePassword(fieldId) {

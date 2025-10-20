@@ -130,7 +130,7 @@ class AdminController extends Controller
             'name' => 'required|string|max:255',
             'phone' => 'required|string|unique:users,phone|regex:/^08\d{8,11}$/',
             'email' => 'nullable|email|unique:users,email',
-            'password' => 'required|string|min:8|regex:/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/',
+            'password' => 'required|string|min:8|regex:/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/|confirmed',
             'role_id' => 'required|exists:roles,id',
             'is_active' => 'boolean'
         ]);
