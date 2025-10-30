@@ -29,9 +29,9 @@
                             <i class="fas fa-users fa-2x opacity-75"></i>
                         </div>
                         <div class="flex-grow-1 ms-3">
-                            <h6 class="mb-1">Total Users</h6>
-                            <h4 class="mb-0">--</h4>
-                            <small class="opacity-75">Semua role</small>
+                            <h6 class="mb-1">Total Staff</h6>
+                            <h4 class="mb-0">{{ $stats['users']['total'] ?? 0 }}</h4>
+                            <small class="opacity-75">Admin, Keuangan, Manajemen</small>
                         </div>
                     </div>
                 </div>
@@ -47,7 +47,7 @@
                         </div>
                         <div class="flex-grow-1 ms-3">
                             <h6 class="mb-1">Total Customer</h6>
-                            <h4 class="mb-0">--</h4>
+                            <h4 class="mb-0">{{ $stats['customers']['total'] ?? 0 }}</h4>
                             <small class="opacity-75">Pelanggan aktif</small>
                         </div>
                     </div>
@@ -64,7 +64,7 @@
                         </div>
                         <div class="flex-grow-1 ms-3">
                             <h6 class="mb-1">Total Tagihan</h6>
-                            <h4 class="mb-0">--</h4>
+                            <h4 class="mb-0">{{ $stats['bills']['total_this_month'] ?? 0 }}</h4>
                             <small class="opacity-75">Bulan ini</small>
                         </div>
                     </div>
@@ -81,7 +81,7 @@
                         </div>
                         <div class="flex-grow-1 ms-3">
                             <h6 class="mb-1">Total Pendapatan</h6>
-                            <h4 class="mb-0">--</h4>
+                            <h4 class="mb-0">Rp {{ number_format($stats['payments']['total_this_month'] ?? 0, 0, ',', '.') }}</h4>
                             <small class="opacity-75">Bulan ini</small>
                         </div>
                     </div>
@@ -107,9 +107,6 @@
                         <a href="{{ route('admin.users') }}" class="btn btn-primary btn-sm">
                             <i class="fas fa-eye me-1"></i> Lihat Semua User
                         </a>
-                        <button class="btn btn-outline-primary btn-sm" onclick="alert('Fitur belum diimplementasi')">
-                            <i class="fas fa-plus me-1"></i> Tambah User Baru
-                        </button>
                     </div>
                 </div>
             </div>
@@ -130,9 +127,6 @@
                         <a href="{{ route('admin.customers') }}" class="btn btn-success btn-sm">
                             <i class="fas fa-eye me-1"></i> Lihat Customer
                         </a>
-                        <button class="btn btn-outline-success btn-sm" onclick="alert('Fitur belum diimplementasi')">
-                            <i class="fas fa-plus me-1"></i> Tambah Customer
-                        </button>
                     </div>
                 </div>
             </div>
@@ -148,14 +142,11 @@
                     </h6>
                 </div>
                 <div class="card-body">
-                    <p class="text-muted mb-3">Generate tagihan, atur tarif, kelola periode penagihan</p>
+                    <p class="text-muted mb-3">Generate tagihan, kelola periode penagihan</p>
                     <div class="d-grid gap-2">
                         <a href="{{ route('admin.billing') }}" class="btn btn-warning btn-sm">
                             <i class="fas fa-eye me-1"></i> Kelola Tagihan
                         </a>
-                        <button class="btn btn-outline-warning btn-sm" onclick="alert('Fitur belum diimplementasi')">
-                            <i class="fas fa-cog me-1"></i> Atur Tarif
-                        </button>
                     </div>
                 </div>
             </div>
@@ -176,9 +167,6 @@
                         <a href="{{ route('admin.reports') }}" class="btn btn-info btn-sm">
                             <i class="fas fa-eye me-1"></i> Lihat Laporan
                         </a>
-                        <button class="btn btn-outline-info btn-sm" onclick="alert('Fitur belum diimplementasi')">
-                            <i class="fas fa-download me-1"></i> Export Data
-                        </button>
                     </div>
                 </div>
             </div>
@@ -194,14 +182,11 @@
                     </h6>
                 </div>
                 <div class="card-body">
-                    <p class="text-muted mb-3">Konfigurasi WhatsApp, template notifikasi, pengaturan umum</p>
+                    <p class="text-muted mb-3">Template notifikasi, pengaturan umum</p>
                     <div class="d-grid gap-2">
                         <a href="{{ route('admin.settings') }}" class="btn btn-secondary btn-sm">
                             <i class="fas fa-cog me-1"></i> Pengaturan
                         </a>
-                        <button class="btn btn-outline-secondary btn-sm" onclick="alert('Fitur belum diimplementasi')">
-                            <i class="fab fa-whatsapp me-1"></i> Konfigurasi WhatsApp
-                        </button>
                     </div>
                 </div>
             </div>
@@ -244,19 +229,31 @@ async function testWhatsApp() {
 }
 
 <script>
-// Fetch dashboard stats dari API
+// Fetch dashboard stats dari API menggunakan Sanctum authentication
 async function loadDashboardStats() {
     try {
         const response = await fetch('/api/admin/dashboard-stats', {
+            method: 'GET',
             headers: {
-                'Authorization': 'Bearer ' + localStorage.getItem('auth_token'),
                 'Accept': 'application/json',
-            }
+                'X-Requested-With': 'XMLHttpRequest',
+                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+            },
+            credentials: 'same-origin'
         });
-        
+
         if (response.ok) {
             const data = await response.json();
-            updateDashboardStats(data.data);
+            if (data.success) {
+                updateDashboardStats(data.data);
+            } else {
+                console.error('API returned error:', data.message);
+            }
+        } else {
+            console.error('Failed to load dashboard stats. Status:', response.status);
+            if (response.status === 401) {
+                console.error('Authentication failed. Please check if you are logged in as admin.');
+            }
         }
     } catch (error) {
         console.error('Error loading dashboard stats:', error);
@@ -264,18 +261,41 @@ async function loadDashboardStats() {
 }
 
 function updateDashboardStats(stats) {
-    // Update cards dengan data real
-    document.querySelector('.bg-primary h4').textContent = stats.users.total;
-    document.querySelector('.bg-success h4').textContent = stats.customers.total;
-    document.querySelector('.bg-warning h4').textContent = stats.bills.total_this_month;
-    document.querySelector('.bg-info h4').textContent = 'Rp ' + new Intl.NumberFormat('id-ID').format(stats.payments.total_this_month);
+    try {
+        // Update Total Users card (hanya staff admin/keuangan/manajemen)
+        const usersCard = document.querySelector('.bg-primary h4');
+        if (usersCard) {
+            usersCard.textContent = stats.users.total || 0;
+        }
+
+        // Update Total Customer card
+        const customersCard = document.querySelector('.bg-success h4');
+        if (customersCard) {
+            customersCard.textContent = stats.customers.total || 0;
+        }
+
+        // Update Total Tagihan card
+        const billsCard = document.querySelector('.bg-warning h4');
+        if (billsCard) {
+            billsCard.textContent = stats.bills.total_this_month || 0;
+        }
+
+        // Update Total Pendapatan card
+        const paymentsCard = document.querySelector('.bg-info h4');
+        if (paymentsCard) {
+            paymentsCard.textContent = 'Rp ' + new Intl.NumberFormat('id-ID').format(stats.payments.total_this_month || 0);
+        }
+
+        console.log('Dashboard stats updated successfully:', stats);
+    } catch (error) {
+        console.error('Error updating dashboard stats:', error);
+    }
 }
 
 // Load stats on page load
-document.addEventListener('DOMContentLoaded', loadDashboardStats);
-</script>
-
-// Check status on page load
-document.addEventListener('DOMContentLoaded', checkWhatsAppStatus);
+document.addEventListener('DOMContentLoaded', function() {
+    loadDashboardStats();
+    checkWhatsAppStatus();
+});
 </script>
 @endsection

@@ -8,12 +8,9 @@ use App\Http\Controllers\Keuangan\KeuanganController;
 use App\Http\Controllers\Manajemen\ManajemenController;
 use App\Http\Controllers\Customer\CustomerController;
 
-// Public routes
-Route::get('/', [HomeController::class, 'index'])->name('home');
-
 // Auth routes
-Route::get('/login', [AuthController::class, 'showLoginForm'])->name('login');
-Route::post('/login', [AuthController::class, 'login']);
+Route::get('/', [AuthController::class, 'showLoginForm'])->name('login');
+Route::post('/login', [AuthController::class, 'login'])->name('login.post');
 Route::get('/register', [AuthController::class, 'showRegisterForm'])->name('register');
 Route::post('/register', [AuthController::class, 'register']);
 Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
@@ -51,7 +48,7 @@ Route::middleware('auth')->group(function () {
 
     // Keuangan routes
     Route::middleware('role:keuangan')->prefix('keuangan')->name('keuangan.')->group(function () {
-        Route::get('/dashboard', [KeuanganController::class, 'dashboard'])->name('dashboard');
+        Route::get('/dashboard', [App\Http\Controllers\FinanceController::class, 'dashboard'])->name('dashboard');
         Route::get('/billing', [KeuanganController::class, 'billing'])->name('billing');
         Route::get('/payments', [KeuanganController::class, 'payments'])->name('payments');
         Route::get('/whatsapp', [KeuanganController::class, 'whatsapp'])->name('whatsapp');
@@ -59,14 +56,14 @@ Route::middleware('auth')->group(function () {
 
     // Manajemen routes
     Route::middleware('role:manajemen')->prefix('manajemen')->name('manajemen.')->group(function () {
-        Route::get('/dashboard', [ManajemenController::class, 'dashboard'])->name('dashboard');
+        Route::get('/dashboard', [App\Http\Controllers\ManagementController::class, 'dashboard'])->name('dashboard');
         Route::get('/reports', [ManajemenController::class, 'reports'])->name('reports');
         Route::get('/analytics', [ManajemenController::class, 'analytics'])->name('analytics');
     });
 
     // Customer routes
     Route::middleware('role:customer')->prefix('customer')->name('customer.')->group(function () {
-        Route::get('/dashboard', [CustomerController::class, 'dashboard'])->name('dashboard');
+        Route::get('/dashboard', [App\Http\Controllers\CustomerDashboardController::class, 'dashboard'])->name('dashboard');
         Route::get('/bills', [CustomerController::class, 'bills'])->name('bills');
         Route::get('/payments', [CustomerController::class, 'payments'])->name('payments');
     });

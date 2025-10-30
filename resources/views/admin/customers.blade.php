@@ -782,7 +782,7 @@ async function loadCustomerGroups() {
 
     } catch (error) {
         console.error('Error loading customer groups:', error);
-        handleApiError(error, 'Gagal memuat data Grup Pelanggan!');
+        handleApiError(error, 'Data Tidak Ada');
     }
 }
 
@@ -812,7 +812,7 @@ async function loadCustomerStats() {
 
     } catch (error) {
         console.error('Error loading stats:', error);
-        handleApiError(error, 'Gagal memuat statistik pelanggan!');
+        handleApiError(error, 'Data Tidak Ada');
         statIds.forEach(id => {
             const el = document.getElementById(id);
             if (el) el.textContent = '0';
@@ -858,7 +858,7 @@ async function searchCustomers(page = 1) {
         currentPage = page;
     } catch (error) {
         console.error('Error loading customers:', error);
-        handleApiError(error, 'Gagal memuat data pelanggan. Pastikan API berfungsi dan terotentikasi.');
+        handleApiError(error, 'Data Tidak Ada');
     } finally {
         showLoading(false);
     }

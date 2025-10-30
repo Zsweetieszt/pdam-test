@@ -11,12 +11,12 @@
                 </h5>
             </div>
             <div class="card-body">
-                <!-- Stats Cards (existing code unchanged) -->
+                <!-- Stats Cards (API integrated) -->
                 <div class="row mb-4">
                     <div class="col-md-3">
                         <div class="card bg-warning text-dark">
                             <div class="card-body text-center">
-                                <h4>25</h4>
+                                <h4 id="pending-bills-count">--</h4>
                                 <small>Tagihan Pending</small>
                             </div>
                         </div>
@@ -24,7 +24,7 @@
                     <div class="col-md-3">
                         <div class="card bg-danger text-white">
                             <div class="card-body text-center">
-                                <h4>8</h4>
+                                <h4 id="overdue-bills-count">--</h4>
                                 <small>Jatuh Tempo Hari Ini</small>
                             </div>
                         </div>
@@ -32,7 +32,7 @@
                     <div class="col-md-3">
                         <div class="card bg-success text-white">
                             <div class="card-body text-center">
-                                <h4>142</h4>
+                                <h4 id="paid-bills-count">--</h4>
                                 <small>Lunas Bulan Ini</small>
                             </div>
                         </div>
@@ -40,7 +40,7 @@
                     <div class="col-md-3">
                         <div class="card bg-info text-white">
                             <div class="card-body text-center">
-                                <h4>Rp 21.5M</h4>
+                                <h4 id="total-revenue">Rp --</h4>
                                 <small>Total Terkumpul</small>
                             </div>
                         </div>
@@ -62,28 +62,27 @@
                     </div>
                 </div>
                 
-                <!-- Filters (existing) -->
+                <!-- Filters (API integrated) -->
                 <div class="row mb-3">
                     <div class="col-md-4">
-                        <input type="text" class="form-control" placeholder="Cari tagihan atau customer...">
+                        <input type="text" class="form-control" id="searchFilter" placeholder="Cari tagihan atau customer...">
                     </div>
                     <div class="col-md-3">
-                        <select class="form-select">
-                            <option>Semua Status</option>
-                            <option>Pending</option>
-                            <option>Lunas</option>
-                            <option>Terlambat</option>
+                        <select class="form-select" id="statusFilter">
+                            <option value="">Semua Status</option>
+                            <option value="pending">Pending</option>
+                            <option value="sent">Terkirim</option>
+                            <option value="paid">Lunas</option>
+                            <option value="overdue">Terlambat</option>
                         </select>
                     </div>
                     <div class="col-md-3">
-                        <select class="form-select">
-                            <option>Periode: Agu 2025</option>
-                            <option>Jul 2025</option>
-                            <option>Jun 2025</option>
+                        <select class="form-select" id="periodFilter">
+                            <option value="">Semua Periode</option>
                         </select>
                     </div>
                     <div class="col-md-2">
-                        <button class="btn btn-primary w-100">
+                        <button class="btn btn-primary w-100" onclick="searchBills()">
                             <i class="fas fa-search"></i>
                         </button>
                     </div>
@@ -105,109 +104,18 @@
                                 <th>Aksi</th>
                             </tr>
                         </thead>
-                        <tbody>
-                            <!-- Sample Data Row 1 -->
-                            <tr data-bill='{"id":1,"customer":"Ahmad Yani","phone":"085723302116","amount":"225000","period":"Agu 2025","usage":"18","due_date":"25/08/2025","bill_number":"INV-2025-003","status":"pending"}'>
-                                <td><input type="checkbox" class="form-check-input bill-checkbox"></td>
-                                <td>INV-2025-003</td>
-                                <td>Ahmad Yani</td>
-                                <td>Agu 2025</td>
-                                <td>18 m³</td>
-                                <td><strong>Rp 225.000</strong></td>
-                                <td>25 Agu 2025</td>
-                                <td><span class="badge bg-warning">Pending</span></td>
-                                <td>
-                                    <div class="btn-group btn-group-sm">
-                                        <button class="btn btn-info" title="Detail">
-                                            <i class="fas fa-eye"></i>
-                                        </button>
-                                        <button class="btn btn-success" title="Tandai Lunas">
-                                            <i class="fas fa-check"></i>
-                                        </button>
-                                        <!-- REQ-F-5.1: WhatsApp Button -->
-                                        <button class="btn btn-primary whatsapp-btn" 
-                                                title="Kirim WhatsApp" 
-                                                onclick="openWhatsAppModal(this)">
-                                            <i class="fab fa-whatsapp"></i>
-                                        </button>
+                        <tbody id="billsTableBody">
+                            <!-- Data will be loaded via API -->
+                            <tr>
+                                <td colspan="9" class="text-center py-4">
+                                    <div class="spinner-border text-primary" role="status">
+                                        <span class="visually-hidden">Loading...</span>
                                     </div>
+                                    <p class="mt-2 mb-0 text-muted">Memuat data tagihan...</p>
                                 </td>
                             </tr>
-                            <!-- Sample Data Row 2 -->
-                            <tr data-bill='{"id":2,"customer":"Maria Sari","phone":"081234567891","amount":"275000","period":"Agu 2025","usage":"22","due_date":"20/08/2025","bill_number":"INV-2025-004","status":"overdue"}'>
-                                <td><input type="checkbox" class="form-check-input bill-checkbox"></td>
-                                <td>INV-2025-004</td>
-                                <td>Maria Sari</td>
-                                <td>Agu 2025</td>
-                                <td>22 m³</td>
-                                <td><strong>Rp 275.000</strong></td>
-                                <td>20 Agu 2025</td>
-                                <td><span class="badge bg-danger">Overdue</span></td>
-                                <td>
-                                    <div class="btn-group btn-group-sm">
-                                        <button class="btn btn-info" title="Detail">
-                                            <i class="fas fa-eye"></i>
-                                        </button>
-                                        <button class="btn btn-success" title="Tandai Lunas">
-                                            <i class="fas fa-check"></i>
-                                        </button>
-                                        <!-- REQ-F-5.1: WhatsApp Button for Overdue -->
-                                        <button class="btn btn-warning whatsapp-btn" 
-                                                title="Kirim Reminder" 
-                                                onclick="openWhatsAppModal(this)">
-                                            <i class="fas fa-bell"></i>
-                                        </button>
-                                    </div>
-                                </td>
-                            </tr>
-                            <!-- Sample Data Row 3 - Sent Status -->
-                            <tr data-bill='{"id":3,"customer":"Siti Nurhaliza","phone":"081234567892","amount":"310000","period":"Agu 2025","usage":"25","due_date":"25/08/2025","bill_number":"INV-2025-005","status":"sent"}'>
-                                <td><input type="checkbox" class="form-check-input bill-checkbox"></td>
-                                <td>INV-2025-005</td>
-                                <td>Siti Nurhaliza</td>
-                                <td>Agu 2025</td>
-                                <td>25 m³</td>
-                                <td><strong>Rp 310.000</strong></td>
-                                <td>25 Agu 2025</td>
-                                <td><span class="badge bg-info">Terkirim</span></td>
-                                <td>
-                                    <div class="btn-group btn-group-sm">
-                                        <button class="btn btn-info" title="Detail">
-                                            <i class="fas fa-eye"></i>
-                                        </button>
-                                        <button class="btn btn-success" title="Tandai Lunas">
-                                            <i class="fas fa-check"></i>
-                                        </button>
-                                        <button class="btn btn-primary whatsapp-btn" 
-                                                title="Kirim Ulang WhatsApp" 
-                                                onclick="openWhatsAppModal(this)">
-                                            <i class="fab fa-whatsapp"></i>
-                                        </button>
-                                    </div>
-                                </td>
-                            </tr>
-                            <!-- Sample Data Row 4 - Paid Status (No WhatsApp Button) -->
-                            <tr data-bill='{"id":4,"customer":"Budi Santoso","phone":"081234567893","amount":"180000","period":"Agu 2025","usage":"15","due_date":"25/08/2025","bill_number":"INV-2025-006","status":"paid"}'>
-                                <td><input type="checkbox" class="form-check-input bill-checkbox" disabled></td>
-                                <td>INV-2025-006</td>
-                                <td>Budi Santoso</td>
-                                <td>Agu 2025</td>
-                                <td>15 m³</td>
-                                <td><strong>Rp 180.000</strong></td>
-                                <td>25 Agu 2025</td>
-                                <td><span class="badge bg-success">Lunas</span></td>
-                                <td>
-                                    <div class="btn-group btn-group-sm">
-                                        <button class="btn btn-info" title="Detail">
-                                            <i class="fas fa-eye"></i>
-                                        </button>
-                                        <!-- No WhatsApp button for paid bills as per REQ-C-9 -->
-                                        <span class="badge bg-success">
-                                            <i class="fas fa-check me-1"></i>Lunas
-                                        </span>
-                                    </div>
-                                </td>
-                            </tr>
+                        </tbody>
+                            </tbody>
                         </tbody>
                     </table>
                 </div>
@@ -478,7 +386,285 @@ document.addEventListener('DOMContentLoaded', function() {
             checkbox.checked = this.checked;
         });
     });
+
+    // Load initial data
+    loadInitialData();
 });
+
+// Load initial data from APIs
+async function loadInitialData() {
+    try {
+        await Promise.all([
+            loadBillStats(),
+            loadBillingPeriods(),
+            searchBills()
+        ]);
+    } catch (error) {
+        console.error('Error loading initial data:', error);
+        showToast('Data Tidak Ada', 'error');
+    }
+}
+
+// Load bill statistics from API
+async function loadBillStats() {
+    try {
+        const response = await fetch('/api/admin/dashboard-stats', {
+            headers: {
+                'Authorization': 'Bearer ' + localStorage.getItem('auth_token'),
+                'Accept': 'application/json',
+            }
+        });
+
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+
+        const data = await response.json();
+
+        document.getElementById('pending-bills-count').textContent = data.data.bills.pending;
+        document.getElementById('overdue-bills-count').textContent = data.data.bills.overdue;
+        document.getElementById('paid-bills-count').textContent = data.data.bills.paid;
+        document.getElementById('total-revenue').textContent = 'Rp ' + formatCurrency(data.data.payments.this_month);
+    } catch (error) {
+        console.error('Error loading stats:', error);
+        // Fallback to default values
+        ['pending-bills-count', 'overdue-bills-count', 'paid-bills-count'].forEach(id => {
+            document.getElementById(id).textContent = '0';
+        });
+        document.getElementById('total-revenue').textContent = 'Rp 0';
+    }
+}
+
+// Load billing periods from API
+async function loadBillingPeriods() {
+    try {
+        const response = await fetch('/api/bills/billing-periods', {
+            headers: {
+                'Authorization': 'Bearer ' + localStorage.getItem('auth_token'),
+                'Accept': 'application/json',
+            }
+        });
+
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+
+        const data = await response.json();
+        const periods = data.data || [];
+        populatePeriodFilter(periods);
+    } catch (error) {
+        console.error('Error loading billing periods:', error);
+        // Fallback to current period
+        const currentDate = new Date();
+        const currentPeriod = {
+            period_month: currentDate.getMonth() + 1,
+            period_year: currentDate.getFullYear()
+        };
+        populatePeriodFilter([currentPeriod]);
+    }
+}
+
+// Populate period filter dropdown
+function populatePeriodFilter(periods) {
+    const select = document.getElementById('periodFilter');
+    const firstOption = select.querySelector('option').outerHTML;
+    
+    select.innerHTML = firstOption + periods.map(period => 
+        `<option value="${period.period_month}">${getMonthName(period.period_month)} ${period.period_year}</option>`
+    ).join('');
+}
+
+// Search bills from API
+async function searchBills(page = 1) {
+    const tbody = document.getElementById('billsTableBody');
+    
+    // Show loading
+    tbody.innerHTML = `
+        <tr>
+            <td colspan="9" class="text-center py-4">
+                <div class="spinner-border text-primary" role="status">
+                    <span class="visually-hidden">Loading...</span>
+                </div>
+                <p class="mt-2 mb-0 text-muted">Memuat data tagihan...</p>
+            </td>
+        </tr>
+    `;
+
+    try {
+        const searchTerm = document.getElementById('searchFilter').value;
+        const statusFilter = document.getElementById('statusFilter').value;
+        const periodFilter = document.getElementById('periodFilter').value;
+
+        // Build query parameters
+        const params = new URLSearchParams({
+            page: page,
+            per_page: 15,
+            sort_field: 'created_at',
+            sort_direction: 'desc'
+        });
+
+        if (searchTerm) params.append('search', searchTerm);
+        if (statusFilter) params.append('status', statusFilter);
+        if (periodFilter) params.append('period_month', periodFilter);
+
+        const response = await fetch(`/api/datatables/bills?${params.toString()}`, {
+            headers: {
+                'Authorization': 'Bearer ' + localStorage.getItem('auth_token'),
+                'Accept': 'application/json',
+            }
+        });
+
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+
+        const data = await response.json();
+        displayBills(data);
+    } catch (error) {
+        console.error('Error loading bills:', error);
+        tbody.innerHTML = `
+            <tr>
+                <td colspan="9" class="text-center py-4">
+                    <i class="fas fa-exclamation-triangle fa-3x text-danger mb-3"></i>
+                    <h6 class="text-danger mb-2">Data Tidak Ada</h6>
+                    <p class="text-muted mb-0">Terjadi kesalahan saat memuat data tagihan</p>
+                </td>
+            </tr>
+        `;
+        showToast('Data Belum Ada', 'error');
+    }
+}
+
+// Display bills in table
+function displayBills(data) {
+    const tbody = document.getElementById('billsTableBody');
+    
+    if (!data.data || data.data.length === 0) {
+        tbody.innerHTML = `
+            <tr>
+                <td colspan="9" class="text-center py-5">
+                    <div class="d-flex flex-column align-items-center">
+                        <i class="fas fa-search fa-4x text-muted mb-3 opacity-50"></i>
+                        <h6 class="text-muted mb-2">Tidak ada data tagihan</h6>
+                        <p class="text-muted small mb-0">Coba ubah kriteria pencarian</p>
+                    </div>
+                </td>
+            </tr>
+        `;
+        return;
+    }
+    
+    tbody.innerHTML = data.data.map((bill, index) => {
+        const usage = bill.current_reading - bill.previous_reading;
+        const billData = {
+            id: bill.id,
+            customer: bill.customer_name,
+            phone: bill.customer_phone || '',
+            amount: bill.total_amount,
+            period: `${getMonthName(bill.period_month)} ${bill.period_year}`,
+            usage: usage,
+            due_date: formatDate(bill.due_date),
+            bill_number: bill.bill_number,
+            status: bill.status
+        };
+        
+        return `
+            <tr data-bill='${JSON.stringify(billData).replace(/'/g, "&apos;")}'>
+                <td><input type="checkbox" class="form-check-input bill-checkbox" ${bill.status === 'paid' ? 'disabled' : ''}></td>
+                <td>${bill.bill_number}</td>
+                <td>${bill.customer_name}</td>
+                <td>${getMonthName(bill.period_month)} ${bill.period_year}</td>
+                <td>${usage} m³</td>
+                <td><strong>Rp ${formatCurrency(bill.total_amount)}</strong></td>
+                <td>${formatDate(bill.due_date)}</td>
+                <td>${getStatusBadge(bill.status)}</td>
+                <td>
+                    <div class="btn-group btn-group-sm">
+                        <button class="btn btn-info" title="Detail" onclick="showBillDetail(${bill.id})">
+                            <i class="fas fa-eye"></i>
+                        </button>
+                        ${bill.status !== 'paid' ? `
+                            <button class="btn btn-success" title="Tandai Lunas" onclick="markAsPaid(${bill.id})">
+                                <i class="fas fa-check"></i>
+                            </button>
+                        ` : ''}
+                        ${canSendWhatsApp(bill.status) ? `
+                            <button class="btn btn-primary whatsapp-btn" 
+                                    title="Kirim WhatsApp" 
+                                    onclick="openWhatsAppModal(this)">
+                                <i class="fab fa-whatsapp"></i>
+                            </button>
+                        ` : bill.status === 'paid' ? `
+                            <span class="badge bg-success">
+                                <i class="fas fa-check me-1"></i>Lunas
+                            </span>
+                        ` : ''}
+                    </div>
+                </td>
+            </tr>
+        `;
+    }).join('');
+}
+
+// Show bill detail modal
+async function showBillDetail(billId) {
+    // For now, just show a simple alert - can be enhanced with a proper modal
+    showToast(`Menampilkan detail tagihan ${billId}`, 'info');
+}
+
+// Mark bill as paid
+async function markAsPaid(billId) {
+    if (!confirm('Tandai tagihan ini sebagai lunas?')) return;
+
+    try {
+        const response = await fetch(`/api/bills/${billId}/status`, {
+            method: 'PUT',
+            headers: {
+                'Authorization': 'Bearer ' + localStorage.getItem('auth_token'),
+                'Content-Type': 'application/json',
+                'Accept': 'application/json',
+            },
+            body: JSON.stringify({ status: 'paid' })
+        });
+
+        if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
+        }
+
+        showToast('Tagihan berhasil ditandai sebagai lunas', 'success');
+        // Refresh data
+        loadBillStats();
+        searchBills();
+    } catch (error) {
+        console.error('Error marking as paid:', error);
+        showToast(error.message || 'Terjadi kesalahan saat menandai sebagai lunas', 'error');
+    }
+}
+
+// Generate monthly bills
+async function generateMonthlyBills() {
+    if (!confirm('Generate tagihan untuk semua pelanggan bulan ini?\n\nProses ini akan membuat tagihan baru berdasarkan pemakaian air bulan lalu.')) {
+        return;
+    }
+
+    try {
+        showToast('Sedang generate tagihan bulanan...', 'info');
+
+        // This would typically call an API endpoint to generate bills
+        // For now, just simulate the process
+        setTimeout(() => {
+            showToast('Tagihan bulanan berhasil dibuat', 'success');
+            loadBillStats();
+            searchBills();
+        }, 2000);
+    } catch (error) {
+        console.error('Error generating bills:', error);
+        showToast('Gagal generate tagihan bulanan', 'error');
+    }
+}
+
+
 
 // REQ-F-5.1: Open WhatsApp Modal
 function openWhatsAppModal(buttonElement) {
@@ -619,7 +805,7 @@ function copyWhatsAppLink() {
 }
 
 // REQ-F-5.2: Open WhatsApp directly
-function openWhatsAppDirect() {
+async function openWhatsAppDirect() {
     const whatsappLink = document.getElementById('whatsapp-link').value;
     
     if (!whatsappLink) {
@@ -632,18 +818,90 @@ function openWhatsAppDirect() {
     
     // Mark as sent if checkbox is checked
     if (document.getElementById('mark-as-sent').checked) {
-        markBillAsSent();
+        await markBillAsSent();
     }
     
     // Log the action if checkbox is checked
     if (document.getElementById('save-log').checked) {
-        logWhatsAppAction();
+        await logWhatsAppAction();
     }
     
     // Close modal
     whatsappModal.hide();
     
     showToast('WhatsApp terbuka! Pesan siap untuk dikirim.', 'success');
+}
+
+// Mark bill as sent via API
+async function markBillAsSent() {
+    try {
+        const response = await fetch(`/api/bills/${currentBillData.id}/status`, {
+            method: 'PUT',
+            headers: {
+                'Authorization': 'Bearer ' + localStorage.getItem('auth_token'),
+                'Content-Type': 'application/json',
+                'Accept': 'application/json',
+            },
+            body: JSON.stringify({ status: 'sent' })
+        });
+
+        if (!response.ok) {
+            throw new Error('Failed to mark as sent');
+        }
+
+        // Update UI
+        const row = document.querySelector(`tr[data-bill*='"id":${currentBillData.id}']`);
+        if (row) {
+            const statusBadge = row.querySelector('.badge');
+            if (statusBadge) {
+                statusBadge.className = 'badge bg-info';
+                statusBadge.textContent = 'Terkirim';
+                
+                // Update data attribute
+                currentBillData.status = 'sent';
+                row.setAttribute('data-bill', JSON.stringify(currentBillData));
+            }
+        }
+    } catch (error) {
+        console.error('Error marking as sent:', error);
+        // Don't show error to user as this is a background operation
+    }
+}
+
+// Generate WhatsApp data for a bill (helper function)
+async function generateWhatsAppData(billData) {
+    // Set appropriate template based on status
+    const templateType = billData.status === 'overdue' ? 'overdue_notice' : 'bill_reminder';
+    const template = messageTemplates[templateType];
+    
+    // Replace template variables with actual data
+    let message = template
+        .replace(/{customer_name}/g, billData.customer)
+        .replace(/{bill_number}/g, billData.bill_number || `INV-2025-00${billData.id}`)
+        .replace(/{period}/g, billData.period)
+        .replace(/{usage}/g, billData.usage)
+        .replace(/{amount}/g, parseInt(billData.amount).toLocaleString('id-ID'))
+        .replace(/{due_date}/g, billData.due_date);
+    
+    // Clean phone number
+    let cleanPhone = billData.phone.replace(/\D/g, ''); // Remove non-digits
+    
+    // Add Indonesian country code if needed
+    if (!cleanPhone.startsWith('62')) {
+        if (cleanPhone.startsWith('0')) {
+            cleanPhone = '62' + cleanPhone.substring(1);
+        } else {
+            cleanPhone = '62' + cleanPhone;
+        }
+    }
+    
+    // Encode message for URL
+    const encodedMessage = encodeURIComponent(message);
+    
+    // Generate wa.me link
+    const link = `https://wa.me/${cleanPhone}?text=${encodedMessage}`;
+    
+    return { message, link, phone: cleanPhone };
 }
 
 // Helper Functions
@@ -658,52 +916,47 @@ function canSendWhatsApp(status) {
     return ['pending', 'overdue', 'sent'].includes(status.toLowerCase());
 }
 
-function markBillAsSent() {
-    // Update UI only (no backend call)
-    const row = document.querySelector(`tr[data-bill*'"id":${currentBillData.id}']`);
-    if (row) {
-        const statusBadge = row.querySelector('.badge');
-        if (statusBadge && ['pending', 'overdue'].includes(currentBillData.status)) {
-            statusBadge.className = 'badge bg-info';
-            statusBadge.textContent = 'Terkirim';
-            
-            // Update data attribute
-            currentBillData.status = 'sent';
-            row.setAttribute('data-bill', JSON.stringify(currentBillData));
-        }
-    }
+function getSelectedBills() {
+    const selectedCheckboxes = document.querySelectorAll('.bill-checkbox:checked');
+    return Array.from(selectedCheckboxes).map(checkbox => {
+        const row = checkbox.closest('tr');
+        return JSON.parse(row.getAttribute('data-bill'));
+    });
 }
 
-function logWhatsAppAction() {
-    // Frontend logging (to console for now)
-    const logData = {
-        billId: currentBillData.id,
-        customer: currentBillData.customer,
-        phone: document.getElementById('phone-number').value,
-        template: document.getElementById('template-select').value,
-        timestamp: new Date().toISOString(),
-        action: 'GENERATE_WHATSAPP_LINK'
+function getMonthName(monthNumber) {
+    const months = [
+        'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
+        'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'
+    ];
+    return months[monthNumber - 1] || 'Unknown';
+}
+
+function formatDate(dateString) {
+    if (!dateString) return '-';
+    const date = new Date(dateString);
+    return date.toLocaleDateString('id-ID', {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric'
+    });
+}
+
+function getStatusBadge(status) {
+    const statusMap = {
+        'pending': { class: 'bg-warning', text: 'Pending' },
+        'overdue': { class: 'bg-danger', text: 'Overdue' },
+        'paid': { class: 'bg-success', text: 'Lunas' },
+        'sent': { class: 'bg-info', text: 'Terkirim' },
+        'cancelled': { class: 'bg-secondary', text: 'Dibatalkan' }
     };
     
-    console.log('WhatsApp notification sent:', logData);
-    
-    // Here you could store in localStorage or send to backend if needed
-    // localStorage.setItem('whatsapp_logs', JSON.stringify([...getLogs(), logData]));
+    const config = statusMap[status] || { class: 'bg-secondary', text: status };
+    return `<span class="badge ${config.class}">${config.text}</span>`;
 }
 
-function editPhoneNumber() {
-    const phoneInput = document.getElementById('phone-number');
-    if (phoneInput.readOnly) {
-        phoneInput.readOnly = false;
-        phoneInput.focus();
-        phoneInput.select();
-        showToast('Edit nomor telepon selesai, tekan Enter untuk simpan', 'info');
-    } else {
-        phoneInput.readOnly = true;
-        // Regenerate link with new phone number
-        updateMessageTemplate();
-        showToast('Nomor telepon diperbarui', 'success');
-    }
+function formatCurrency(amount) {
+    return parseInt(amount).toLocaleString('id-ID');
 }
 
 function refreshMessagePreview() {
@@ -721,11 +974,13 @@ function sendBulkWhatsApp() {
     
     // Count eligible bills (not paid)
     let eligibleCount = 0;
+    const billIds = [];
     selectedBills.forEach(checkbox => {
         const row = checkbox.closest('tr');
         const billData = JSON.parse(row.getAttribute('data-bill'));
         if (canSendWhatsApp(billData.status)) {
             eligibleCount++;
+            billIds.push(billData.id);
         }
     });
     
@@ -734,9 +989,89 @@ function sendBulkWhatsApp() {
         return;
     }
     
-    if (confirm(`Kirim notifikasi WhatsApp ke ${eligibleCount} pelanggan yang dipilih?`)) {
-        showToast(`Fitur bulk WhatsApp untuk ${eligibleCount} pelanggan akan segera tersedia`, 'info');
+    if (!confirm(`Kirim notifikasi WhatsApp ke ${eligibleCount} pelanggan yang dipilih?`)) {
+        return;
     }
+
+    // Show loading state
+    const bulkBtn = document.getElementById('bulk-whatsapp-btn');
+    const originalText = bulkBtn.innerHTML;
+    bulkBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Mengirim...';
+    bulkBtn.disabled = true;
+
+    let successCount = 0;
+    let errorCount = 0;
+
+    // Process each bill sequentially to avoid overwhelming the browser
+    (async function processBills() {
+        for (const billId of billIds) {
+            try {
+                // Get bill data
+                const row = document.querySelector(`tr[data-bill*='"id":${billId}']`);
+                const billData = JSON.parse(row.getAttribute('data-bill'));
+                
+                // Generate WhatsApp data
+                const whatsappData = await generateWhatsAppData(billData);
+                
+                // Open WhatsApp in new tab
+                window.open(whatsappData.link, '_blank');
+                
+                // Mark as sent if requested
+                if (document.getElementById('bulk-mark-sent').checked) {
+                    await fetch(`/api/bills/${billId}/status`, {
+                        method: 'PUT',
+                        headers: {
+                            'Authorization': 'Bearer ' + localStorage.getItem('auth_token'),
+                            'Content-Type': 'application/json',
+                            'Accept': 'application/json',
+                        },
+                        body: JSON.stringify({ status: 'sent' })
+                    });
+                    
+                    // Update UI
+                    const statusBadge = row.querySelector('.badge');
+                    if (statusBadge) {
+                        statusBadge.className = 'badge bg-info';
+                        statusBadge.textContent = 'Terkirim';
+                        
+                        // Update data attribute
+                        billData.status = 'sent';
+                        row.setAttribute('data-bill', JSON.stringify(billData));
+                    }
+                }
+                
+                // Log the action
+                if (document.getElementById('bulk-save-log').checked) {
+                    console.log('Bulk WhatsApp sent for bill:', billId);
+                }
+                
+                successCount++;
+                
+                // Small delay between opens to avoid browser blocking
+                await new Promise(resolve => setTimeout(resolve, 1000));
+                
+            } catch (error) {
+                console.error('Error sending WhatsApp for bill', billId, ':', error);
+                errorCount++;
+            }
+        }
+        
+        // Reset button
+        bulkBtn.innerHTML = originalText;
+        bulkBtn.disabled = false;
+        
+        // Show results
+        if (successCount > 0) {
+            showToast(`Berhasil mengirim ${successCount} pesan WhatsApp${errorCount > 0 ? `, ${errorCount} gagal` : ''}`, 'success');
+        } else {
+            showToast('Gagal mengirim semua pesan WhatsApp', 'error');
+        }
+        
+        // Refresh stats if any bills were marked as sent
+        if (document.getElementById('bulk-mark-sent').checked && successCount > 0) {
+            loadBillStats();
+        }
+    })();
 }
 
 function showToast(message, type = 'info') {

@@ -503,7 +503,6 @@
 
 <script>
 // Global variables - REQ-F-10 compliant
-let billsData = [];
 let currentPage = 1;
 let perPage = 15;
 let sortField = 'created_at';
@@ -577,8 +576,7 @@ function setupSearchHandlers() {
 function loadInitialData() {
     showLoading();
     Promise.all([
-        generateMockBills(),
-        loadBillingPeriods(), 
+        loadBillingPeriods(),
         loadCustomers(),
         loadBillStats()
     ]).then(() => {
@@ -605,153 +603,53 @@ function bindEvents() {
     document.getElementById('customerSelect').addEventListener('change', loadPreviousReading);
 }
 
-// Generate mock bills data with proper structure
-function generateMockBills() {
-    const statuses = ['pending', 'sent', 'paid', 'overdue', 'cancelled'];
-    const months = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus'];
-    
-    billsData = Array.from({length: 50}, (_, i) => {
-        const id = i + 1;
-        const status = statuses[Math.floor(Math.random() * statuses.length)];
-        const baseAmount = Math.floor(Math.random() * 300000) + 50000;
-        const additionalCharges = Math.floor(Math.random() * 50000);
-        const usage = Math.floor(Math.random() * 30) + 5;
-        
-        return {
-            id: id,
-            bill_number: `BILL-2025${String(id).padStart(3, '0')}`,
-            meter_id: i + 1,
-            customer_name: `Customer ${id}`,
-            customer_number: `CUST-${String(id).padStart(3, '0')}`,
-            meter_number: `MTR-${String(id).padStart(4, '0')}`,
-            period_month: Math.floor(Math.random() * 8) + 1,
-            period_year: 2025,
-            previous_reading: Math.floor(Math.random() * 100) + 50,
-            current_reading: Math.floor(Math.random() * 100) + 150,
-            usage_m3: usage,
-            base_amount: baseAmount,
-            additional_charges: additionalCharges,
-            tax_amount: Math.floor(baseAmount * 0.1),
-            total_amount: baseAmount + additionalCharges + Math.floor(baseAmount * 0.1),
-            due_date: new Date(2025, Math.floor(Math.random() * 12), Math.floor(Math.random() * 28) + 1).toISOString().split('T')[0],
-            status: status,
-            issued_date: new Date(2025, Math.floor(Math.random() * 8), Math.floor(Math.random() * 28) + 1).toISOString().split('T')[0],
-            created_at: new Date(2025, 0, Math.floor(Math.random() * 28) + 1).toISOString()
-        };
-    });
-    
-    return Promise.resolve(billsData);
-}
-
 // Enhanced search function - REQ-F-10.1 & REQ-F-10.2
 async function searchBills(page = 1) {
     showLoading();
-    
+
     const searchTerm = document.getElementById('customerSearchFilter').value;
     const statusFilter = document.getElementById('statusFilter').value;
     const periodFilter = document.getElementById('periodFilter').value;
     const dueDateFilter = document.getElementById('dueDateFilter').value;
-    
+
     try {
-        // Simulate API delay
-        await new Promise(resolve => setTimeout(resolve, 800));
-        
-        // Use mock data with enhanced filtering and sorting
-        const mockData = filterAndSortBills(page, perPage, searchTerm, statusFilter, periodFilter, dueDateFilter);
-        
-        displayBills(mockData);
-        updatePagination(mockData);
+        // Build query parameters
+        const params = new URLSearchParams({
+            page: page,
+            per_page: perPage,
+            sort_field: sortField,
+            sort_direction: sortDirection
+        });
+
+        if (searchTerm) params.append('search', searchTerm);
+        if (statusFilter) params.append('status', statusFilter);
+        if (periodFilter) params.append('period_month', periodFilter);
+        if (dueDateFilter) params.append('due_date', dueDateFilter);
+
+        const response = await fetch(`/api/datatables/bills?${params.toString()}`, {
+            headers: {
+                'Authorization': 'Bearer ' + localStorage.getItem('auth_token'),
+                'Accept': 'application/json',
+            }
+        });
+
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+
+        const data = await response.json();
+        displayBills(data);
+        updatePagination(data);
         currentPage = page;
     } catch (error) {
         console.error('Error loading bills:', error);
-        handleApiError(error, 'Gagal memuat data tagihan');
+        handleApiError(error, 'Data Belum Ada');
     } finally {
         hideLoading();
     }
 }
 
 // Enhanced filtering and sorting with proper pagination
-function filterAndSortBills(page, perPage, search, statusFilter, periodFilter, dueDateFilter) {
-    let filteredBills = [...billsData];
-    
-    // Apply filters
-    if (search) {
-        const searchLower = search.toLowerCase();
-        filteredBills = filteredBills.filter(bill => 
-            bill.bill_number.toLowerCase().includes(searchLower) ||
-            bill.customer_name.toLowerCase().includes(searchLower) ||
-            bill.customer_number.toLowerCase().includes(searchLower) ||
-            bill.meter_number.toLowerCase().includes(searchLower)
-        );
-    }
-    
-    if (statusFilter) {
-        filteredBills = filteredBills.filter(bill => bill.status === statusFilter);
-    }
-    
-    if (periodFilter) {
-        filteredBills = filteredBills.filter(bill => bill.period_month == periodFilter);
-    }
-    
-    if (dueDateFilter) {
-        filteredBills = filteredBills.filter(bill => bill.due_date === dueDateFilter);
-    }
-    
-    // Apply sorting - REQ-F-10.3
-    filteredBills.sort((a, b) => {
-        let valueA, valueB;
-        
-        switch(sortField) {
-            case 'bill_number':
-                valueA = a.bill_number || '';
-                valueB = b.bill_number || '';
-                break;
-            case 'customer_name':
-                valueA = a.customer_name || '';
-                valueB = b.customer_name || '';
-                break;
-            case 'total_amount':
-                valueA = a.total_amount;
-                valueB = b.total_amount;
-                break;
-            case 'due_date':
-                valueA = new Date(a.due_date);
-                valueB = new Date(b.due_date);
-                break;
-            default:
-                valueA = new Date(a.created_at);
-                valueB = new Date(b.created_at);
-        }
-        
-        // Handle different data types
-        if (valueA instanceof Date && valueB instanceof Date) {
-            return sortDirection === 'asc' 
-                ? valueA.getTime() - valueB.getTime()
-                : valueB.getTime() - valueA.getTime();
-        } else if (typeof valueA === 'number' && typeof valueB === 'number') {
-            return sortDirection === 'asc' ? valueA - valueB : valueB - valueA;
-        } else {
-            const comparison = valueA.toString().localeCompare(valueB.toString(), 'id-ID');
-            return sortDirection === 'asc' ? comparison : -comparison;
-        }
-    });
-    
-    // Apply pagination - REQ-F-10.4
-    const startIndex = (page - 1) * parseInt(perPage);
-    const endIndex = startIndex + parseInt(perPage);
-    const paginatedBills = filteredBills.slice(startIndex, endIndex);
-    
-    return {
-        data: paginatedBills,
-        current_page: parseInt(page),
-        per_page: parseInt(perPage),
-        total: filteredBills.length,
-        last_page: Math.ceil(filteredBills.length / parseInt(perPage)),
-        from: filteredBills.length === 0 ? 0 : startIndex + 1,
-        to: Math.min(endIndex, filteredBills.length)
-    };
-}
-
 // Enhanced display bills function - REQ-F-10.1
 function displayBills(data) {
     const tbody = document.getElementById('billsTableBody');
@@ -848,22 +746,26 @@ function displayBills(data) {
     });
 }
 
-// Load statistics from mock data
+// Load statistics from API
 async function loadBillStats() {
     try {
-        await new Promise(resolve => setTimeout(resolve, 500));
-        
-        const stats = {
-            total: billsData.length,
-            paid: billsData.filter(b => b.status === 'paid').length,
-            pending: billsData.filter(b => b.status === 'pending').length,
-            overdue: billsData.filter(b => b.status === 'overdue').length
-        };
-        
-        document.getElementById('totalBillsCount').textContent = stats.total;
-        document.getElementById('paidBillsCount').textContent = stats.paid;
-        document.getElementById('pendingBillsCount').textContent = stats.pending;
-        document.getElementById('overdueBillsCount').textContent = stats.overdue;
+        const response = await fetch('/api/admin/dashboard-stats', {
+            headers: {
+                'Authorization': 'Bearer ' + localStorage.getItem('auth_token'),
+                'Accept': 'application/json',
+            }
+        });
+
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+
+        const data = await response.json();
+
+        document.getElementById('totalBillsCount').textContent = data.data.bills.total_this_month;
+        document.getElementById('paidBillsCount').textContent = data.data.bills.paid;
+        document.getElementById('pendingBillsCount').textContent = data.data.bills.pending;
+        document.getElementById('overdueBillsCount').textContent = data.data.bills.overdue;
     } catch (error) {
         console.error('Error loading stats:', error);
         ['totalBillsCount', 'paidBillsCount', 'pendingBillsCount', 'overdueBillsCount'].forEach(id => {
@@ -872,35 +774,73 @@ async function loadBillStats() {
     }
 }
 
-// Load billing periods (mock data)
-function loadBillingPeriods() {
-    billingPeriods = Array.from({length: 8}, (_, i) => ({
-        id: i + 1,
-        period_month: i + 1,
-        period_year: 2025
-    }));
-    
-    populatePeriodSelects();
-    return Promise.resolve(billingPeriods);
+// Load billing periods from API
+async function loadBillingPeriods() {
+    try {
+        const response = await fetch('/api/bills/billing-periods', {
+            headers: {
+                'Authorization': 'Bearer ' + localStorage.getItem('auth_token'),
+                'Accept': 'application/json',
+            }
+        });
+
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+
+        const data = await response.json();
+        billingPeriods = data.data || [];
+        populatePeriodSelects();
+        return billingPeriods;
+    } catch (error) {
+        console.error('Error loading billing periods:', error);
+        // Fallback to mock data if API fails
+        billingPeriods = Array.from({length: 8}, (_, i) => ({
+            id: i + 1,
+            period_month: i + 1,
+            period_year: 2025
+        }));
+        populatePeriodSelects();
+        return billingPeriods;
+    }
 }
 
-// Load customers (mock data)
-function loadCustomers() {
-    customers = Array.from({length: 20}, (_, i) => ({
-        id: i + 1,
-        customer_number: `CUST-${String(i + 1).padStart(3, '0')}`,
-        user: {
-            name: `Customer ${i + 1}`,
-            phone: `0811${String(i + 1).padStart(4, '0')}`
-        },
-        meter: {
-            id: i + 1,
-            meter_number: `MTR-${String(i + 1).padStart(4, '0')}`
+// Load customers from API
+async function loadCustomers() {
+    try {
+        const response = await fetch('/api/customers?per_page=100', {
+            headers: {
+                'Authorization': 'Bearer ' + localStorage.getItem('auth_token'),
+                'Accept': 'application/json',
+            }
+        });
+
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
         }
-    }));
-    
-    populateCustomerSelect();
-    return Promise.resolve(customers);
+
+        const data = await response.json();
+        customers = data.data || [];
+        populateCustomerSelect();
+        return customers;
+    } catch (error) {
+        console.error('Error loading customers:', error);
+        // Fallback to mock data if API fails
+        customers = Array.from({length: 20}, (_, i) => ({
+            id: i + 1,
+            customer_number: `CUST-${String(i + 1).padStart(3, '0')}`,
+            user: {
+                name: `Customer ${i + 1}`,
+                phone: `0811${String(i + 1).padStart(4, '0')}`
+            },
+            meters: [{
+                id: i + 1,
+                meter_number: `MTR-${String(i + 1).padStart(4, '0')}`
+            }]
+        }));
+        populateCustomerSelect();
+        return customers;
+    }
 }
 
 function populatePeriodSelects() {
@@ -919,9 +859,13 @@ function populatePeriodSelects() {
 function populateCustomerSelect() {
     const select = document.getElementById('customerSelect');
     const firstOption = select.querySelector('option').outerHTML;
-    
-    select.innerHTML = firstOption + customers.map(customer => 
-        `<option value="${customer.meter.id}">${customer.user.name} - ${customer.customer_number}</option>`
+
+    select.innerHTML = firstOption + customers.flatMap(customer =>
+        (customer.meters || []).map(meter =>
+            `<option value="${meter.id}" data-customer-id="${customer.id}" data-customer-name="${customer.user?.name || 'Unknown'}" data-customer-number="${customer.customer_number}">
+                ${customer.user?.name || 'Unknown'} - ${customer.customer_number} (${meter.meter_number})
+            </option>`
+        )
     ).join('');
 }
 
@@ -1075,12 +1019,23 @@ async function loadPreviousReading() {
         return;
     }
 
-    // Simulate loading previous reading from bills
-    const previousBills = billsData.filter(bill => bill.meter_id == meterId && bill.status === 'paid');
-    if (previousBills.length > 0) {
-        const lastBill = previousBills[previousBills.length - 1];
-        document.getElementById('previousReading').value = lastBill.current_reading;
-    } else {
+    try {
+        const response = await fetch(`/api/meters/${meterId}/details`, {
+            headers: {
+                'Authorization': 'Bearer ' + localStorage.getItem('auth_token'),
+                'Accept': 'application/json',
+            }
+        });
+
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+
+        const data = await response.json();
+        document.getElementById('previousReading').value = data.data.last_reading || 0;
+    } catch (error) {
+        console.error('Error loading previous reading:', error);
+        // Fallback to 0 if API fails
         document.getElementById('previousReading').value = '0';
     }
 }
@@ -1118,39 +1073,33 @@ async function generateBill() {
     saveButton.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Generating...';
 
     try {
-        // Simulate API call
-        await new Promise(resolve => setTimeout(resolve, 1500));
-        
-        // Add new bill to mock data
-        const newId = Math.max(...billsData.map(b => b.id)) + 1;
-        const customerId = parseInt(document.getElementById('customerSelect').value);
-        const customer = customers.find(c => c.meter.id === customerId);
-        
-        const newBill = {
-            id: newId,
-            bill_number: `BILL-2025${String(newId).padStart(3, '0')}`,
-            meter_id: customerId,
-            customer_name: customer.user.name,
-            customer_number: customer.customer_number,
-            meter_number: customer.meter.meter_number,
-            period_month: parseInt(document.getElementById('billingPeriodSelect').value),
-            period_year: 2025,
-            previous_reading: parseFloat(document.getElementById('previousReading').value),
+        const billData = {
+            meter_id: parseInt(document.getElementById('customerSelect').value),
+            billing_period_id: parseInt(document.getElementById('billingPeriodSelect').value),
+            previous_reading: previousReading,
             current_reading: currentReading,
-            usage_m3: currentReading - parseFloat(document.getElementById('previousReading').value),
             base_amount: parseFloat(document.getElementById('baseAmount').value),
             additional_charges: parseFloat(document.getElementById('additionalCharges').value) || 0,
             tax_amount: parseFloat(document.getElementById('taxAmount').value) || 0,
-            total_amount: parseFloat(document.getElementById('baseAmount').value) + 
-                         (parseFloat(document.getElementById('additionalCharges').value) || 0) + 
-                         (parseFloat(document.getElementById('taxAmount').value) || 0),
-            due_date: document.getElementById('dueDate').value,
-            status: 'pending',
-            issued_date: new Date().toISOString().split('T')[0],
-            created_at: new Date().toISOString()
+            due_date: document.getElementById('dueDate').value
         };
-        
-        billsData.unshift(newBill);
+
+        const response = await fetch('/api/bills/generate', {
+            method: 'POST',
+            headers: {
+                'Authorization': 'Bearer ' + localStorage.getItem('auth_token'),
+                'Content-Type': 'application/json',
+                'Accept': 'application/json',
+            },
+            body: JSON.stringify(billData)
+        });
+
+        if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
+        }
+
+        const data = await response.json();
 
         showSuccess('Tagihan berhasil dibuat');
         bootstrap.Modal.getInstance(document.getElementById('meterReadingModal')).hide();
@@ -1158,7 +1107,7 @@ async function generateBill() {
         loadBillStats();
     } catch (error) {
         console.error('Error generating bill:', error);
-        showError('Terjadi kesalahan saat membuat tagihan');
+        showError(error.message || 'Terjadi kesalahan saat membuat tagihan');
     } finally {
         saveButton.disabled = false;
         saveButton.innerHTML = '<i class="fas fa-save me-2"></i>Generate Tagihan';
@@ -1166,27 +1115,30 @@ async function generateBill() {
 }
 
 async function showBillDetail(billId) {
-    const bill = billsData.find(b => b.id === billId);
-    if (!bill) {
-        showError('Tagihan tidak ditemukan');
-        return;
-    }
-
     const modal = new bootstrap.Modal(document.getElementById('billDetailModal'));
     modal.show();
 
     try {
-        // Simulate API delay
-        await new Promise(resolve => setTimeout(resolve, 500));
-        
-        renderBillDetail(bill);
-        currentBillId = bill.id;
+        const response = await fetch(`/api/bills/${billId}`, {
+            headers: {
+                'Authorization': 'Bearer ' + localStorage.getItem('auth_token'),
+                'Accept': 'application/json',
+            }
+        });
+
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+
+        const data = await response.json();
+        renderBillDetail(data.data);
+        currentBillId = billId;
     } catch (error) {
         console.error('Error loading bill detail:', error);
         document.getElementById('billDetailContent').innerHTML = `
             <div class="text-center py-5">
                 <i class="fas fa-exclamation-triangle fa-3x text-danger mb-3"></i>
-                <p class="text-danger">Gagal memuat detail tagihan</p>
+                <p class="text-danger">Data Tidak Ada</p>
             </div>
         `;
     }
@@ -1279,13 +1231,19 @@ async function updateStatus() {
     saveButton.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Updating...';
 
     try {
-        // Simulate API call
-        await new Promise(resolve => setTimeout(resolve, 1000));
-        
-        // Update bill status in mock data
-        const billIndex = billsData.findIndex(b => b.id === billId);
-        if (billIndex !== -1) {
-            billsData[billIndex].status = newStatus;
+        const response = await fetch(`/api/bills/${billId}/status`, {
+            method: 'PUT',
+            headers: {
+                'Authorization': 'Bearer ' + localStorage.getItem('auth_token'),
+                'Content-Type': 'application/json',
+                'Accept': 'application/json',
+            },
+            body: JSON.stringify({ status: newStatus })
+        });
+
+        if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
         }
 
         showSuccess('Status tagihan berhasil diubah');
@@ -1294,7 +1252,7 @@ async function updateStatus() {
         loadBillStats();
     } catch (error) {
         console.error('Error updating status:', error);
-        showError('Terjadi kesalahan saat mengubah status');
+        showError(error.message || 'Terjadi kesalahan saat mengubah status');
     } finally {
         saveButton.disabled = false;
         saveButton.innerHTML = '<i class="fas fa-save me-2"></i>Update Status';
@@ -1305,13 +1263,19 @@ async function markAsPaid(billId) {
     if (!confirm('Tandai tagihan ini sebagai lunas?')) return;
 
     try {
-        // Simulate API call
-        await new Promise(resolve => setTimeout(resolve, 800));
-        
-        // Update status to paid
-        const billIndex = billsData.findIndex(b => b.id === billId);
-        if (billIndex !== -1) {
-            billsData[billIndex].status = 'paid';
+        const response = await fetch(`/api/bills/${billId}/status`, {
+            method: 'PUT',
+            headers: {
+                'Authorization': 'Bearer ' + localStorage.getItem('auth_token'),
+                'Content-Type': 'application/json',
+                'Accept': 'application/json',
+            },
+            body: JSON.stringify({ status: 'paid' })
+        });
+
+        if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
         }
 
         showSuccess('Tagihan berhasil ditandai sebagai lunas');
@@ -1319,7 +1283,7 @@ async function markAsPaid(billId) {
         loadBillStats();
     } catch (error) {
         console.error('Error marking as paid:', error);
-        showError('Terjadi kesalahan saat menandai sebagai lunas');
+        showError(error.message || 'Terjadi kesalahan saat menandai sebagai lunas');
     }
 }
 

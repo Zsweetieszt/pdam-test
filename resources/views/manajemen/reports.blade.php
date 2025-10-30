@@ -445,44 +445,28 @@ function setupEventListeners() {
 async function loadDashboardData() {
     try {
         showLoadingState();
-        
-        // Simulate API call to /api/dashboard - replace with actual call
-        setTimeout(() => {
-            // Mock data - replace with actual API response
-            dashboardData = {
-                overview: {
-                    total_customers: 1250,
-                    new_customers_this_month: 45,
-                    total_bills: 3420,
-                    bills_this_month: 185,
-                    pending_bills: 67,
-                    overdue_bills: 23,
-                    paid_bills: 3330,
-                    total_revenue: 125000000,
-                    revenue_this_month: 15200000,
-                    outstanding_amount: 5400000
-                },
-                trends: generateMockTrendData(),
-                recent_activities: [
-                    { type: 'bill', message: 'Tagihan baru dibuat', time: '5 menit lalu', status: 'info' },
-                    { type: 'payment', message: 'Pembayaran Rp 250.000 diterima', time: '15 menit lalu', status: 'success' },
-                    { type: 'overdue', message: '5 tagihan melewati jatuh tempo', time: '1 jam lalu', status: 'warning' }
-                ],
-                quick_stats: {
-                    collection_rate: 85.6,
-                    avg_bill_amount: 125000,
-                    avg_payment_time: 8.5
-                }
-            };
-            
-            updateDashboardUI();
-            initializeCharts();
-            hideLoadingState();
-        }, 1000);
-        
+
+        const response = await fetch('/api/dashboard/management', {
+            headers: {
+                'Authorization': 'Bearer ' + localStorage.getItem('auth_token'),
+                'Accept': 'application/json',
+            }
+        });
+
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+
+        dashboardData = await response.json();
+        updateDashboardUI();
+        initializeCharts();
+        hideLoadingState();
+
     } catch (error) {
         console.error('Error loading dashboard data:', error);
-        showError('Gagal memuat data dashboard');
+        showError('Data Tidak Ada');
+    } catch (error) {
+        hideLoadingState();
     }
 }
 
@@ -684,27 +668,41 @@ async function generateReport() {
     const reportType = document.getElementById('reportType').value;
     const dateFrom = document.getElementById('dateFrom').value;
     const dateTo = document.getElementById('dateTo').value;
-    
+
     if (!dateFrom || !dateTo) {
         showError('Pilih rentang tanggal terlebih dahulu');
         return;
     }
-    
+
     if (new Date(dateFrom) > new Date(dateTo)) {
         showError('Tanggal mulai tidak boleh lebih besar dari tanggal akhir');
         return;
     }
-    
+
     try {
         showReportLoading();
-        
-        // Simulate API call - replace with actual call to /api/reports/generate
-        setTimeout(() => {
-            reportData = generateMockReportData(reportType, dateFrom, dateTo);
-            displayReportTable(reportType, reportData);
-            hideReportLoading();
-        }, 1500);
-        
+
+        const params = new URLSearchParams({
+            type: reportType,
+            date_from: dateFrom,
+            date_to: dateTo
+        });
+
+        const response = await fetch(`/api/reports/generate?${params.toString()}`, {
+            headers: {
+                'Authorization': 'Bearer ' + localStorage.getItem('auth_token'),
+                'Accept': 'application/json',
+            }
+        });
+
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+
+        reportData = await response.json();
+        displayReportTable(reportType, reportData);
+        hideReportLoading();
+
     } catch (error) {
         console.error('Error generating report:', error);
         showError('Gagal generate laporan');
@@ -1018,38 +1016,57 @@ function getReportTypeText(reportType) {
 }
 
 // REQ-F-7.3: Bulk export all reports
-function exportAllReports() {
-    if (confirm('Export semua jenis laporan? Ini akan membuat 5 file (PDF & Excel untuk setiap jenis laporan)')) {
-        showToast('Memproses export semua laporan...', 'info');
-        
-        const reportTypes = ['revenue', 'billing', 'customer', 'payment', 'usage'];
-        let completed = 0;
-        
-        reportTypes.forEach((type, index) => {
-            setTimeout(() => {
-                // Generate mock data for each report type
-                const mockData = generateMockReportData(type, 
-                    document.getElementById('dateFrom').value,
-                    document.getElementById('dateTo').value);
-                
-                // Export both PDF and Excel
-                exportToPDF(type, mockData, 
-                    document.getElementById('dateFrom').value,
-                    document.getElementById('dateTo').value);
-                
-                setTimeout(() => {
-                    exportToExcel(type, mockData,
-                        document.getElementById('dateFrom').value,
-                        document.getElementById('dateTo').value);
-                    
-                    completed++;
-                    if (completed === reportTypes.length) {
-                        showToast('Semua laporan berhasil diexport!', 'success');
-                    }
-                }, 500);
-                
-            }, index * 1000);
-        });
+async function exportAllReports() {
+    if (!confirm('Export semua jenis laporan? Ini akan membuat 5 file (PDF & Excel untuk setiap jenis laporan)')) {
+        return;
+    }
+
+    showToast('Memproses export semua laporan...', 'info');
+
+    const reportTypes = ['revenue', 'billing', 'customer', 'payment', 'usage'];
+    const dateFrom = document.getElementById('dateFrom').value;
+    const dateTo = document.getElementById('dateTo').value;
+
+    let completed = 0;
+    let errors = 0;
+
+    for (const type of reportTypes) {
+        try {
+            // Generate report data from API
+            const params = new URLSearchParams({
+                type: type,
+                date_from: dateFrom,
+                date_to: dateTo
+            });
+
+            const response = await fetch(`/api/reports/generate?${params.toString()}`, {
+                headers: {
+                    'Authorization': 'Bearer ' + localStorage.getItem('auth_token'),
+                    'Accept': 'application/json',
+                }
+            });
+
+            if (!response.ok) {
+                throw new Error(`Failed to generate ${type} report`);
+            }
+
+            const reportData = await response.json();
+
+            // Export both PDF and Excel
+            exportToPDF(type, reportData, dateFrom, dateTo);
+            exportToExcel(type, reportData, dateFrom, dateTo);
+
+            completed++;
+        } catch (error) {
+            console.error(`Error exporting ${type} report:`, error);
+            errors++;
+        }
+    }
+
+    if (errors === 0) {
+        showToast('Semua laporan berhasil diexport!', 'success');
+    } else {
+        showToast(`${completed} laporan berhasil, ${errors} gagal diexport`, 'warning');
     }
 }
 
@@ -1187,84 +1204,6 @@ function formatDate(dateString) {
     return new Date(dateString).toLocaleDateString('id-ID');
 }
 
-// Mock data generators
-function generateMockTrendData() {
-    const data = [];
-    for (let i = 11; i >= 0; i--) {
-        const date = new Date();
-        date.setMonth(date.getMonth() - i);
-        data.push({
-            month: date.toISOString().slice(0, 7),
-            month_name: date.toLocaleDateString('id-ID', { month: 'short', year: 'numeric' }),
-            bills_generated: Math.floor(Math.random() * 200) + 100,
-            revenue: Math.floor(Math.random() * 10000000) + 5000000,
-            new_customers: Math.floor(Math.random() * 50) + 20
-        });
-    }
-    return data;
-}
-
-function generateMockReportData(reportType, dateFrom, dateTo) {
-    const mockData = {
-        summary: {
-            total: 100,
-            amount: 15000000
-        },
-        details: []
-    };
-    
-    // Generate 20 sample rows
-    for (let i = 1; i <= 20; i++) {
-        switch(reportType) {
-            case 'revenue':
-                mockData.details.push({
-                    date: '2025-08-' + String(i).padStart(2, '0'),
-                    count: Math.floor(Math.random() * 10) + 5,
-                    amount: Math.floor(Math.random() * 1000000) + 500000,
-                    average: Math.floor(Math.random() * 200000) + 100000
-                });
-                break;
-            case 'billing':
-                mockData.details.push({
-                    bill_number: `BILL-2025-${String(i).padStart(3, '0')}`,
-                    customer: `Customer ${i}`,
-                    period: 'Agu 2025',
-                    amount: Math.floor(Math.random() * 500000) + 100000,
-                    status: ['paid', 'pending', 'overdue'][Math.floor(Math.random() * 3)],
-                    due_date: '2025-08-25'
-                });
-                break;
-            case 'customer':
-                mockData.details.push({
-                    customer_number: `CUST-${String(i).padStart(4, '0')}`,
-                    name: `Pelanggan ${i}`,
-                    tariff: 'R1',
-                    joined: `2024-0${Math.floor(Math.random() * 9) + 1}-15`
-                });
-                break;
-            case 'payment':
-                mockData.details.push({
-                    payment_number: `PAY-2025-${String(i).padStart(3, '0')}`,
-                    customer: `Customer ${i}`,
-                    amount: Math.floor(Math.random() * 500000) + 100000,
-                    method: ['Transfer', 'Tunai', 'Online'][Math.floor(Math.random() * 3)],
-                    date: '2025-08-' + String(Math.floor(Math.random() * 28) + 1).padStart(2, '0'),
-                    verified: Math.random() > 0.3
-                });
-                break;
-            case 'usage':
-                mockData.details.push({
-                    customer: `Customer ${i}`,
-                    period: 'Agu 2025',
-                    usage: Math.floor(Math.random() * 30) + 10,
-                    tariff: 'R1',
-                    total: Math.floor(Math.random() * 300000) + 100000
-                });
-                break;
-        }
-    }
-    
-    return mockData;
-}
+// Mock data generators - REMOVED: Now using real API data
 </script>
 @endsection

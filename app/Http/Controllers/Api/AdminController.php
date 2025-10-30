@@ -25,12 +25,16 @@ class AdminController extends Controller
         try {
             $stats = [
                 'users' => [
-                    'total' => User::count(),
-                    'active' => User::where('is_active', true)->count(),
+                    'total' => User::whereHas('role', function($q) { 
+                        $q->whereIn('name', ['admin', 'keuangan', 'manajemen']); 
+                    })->count(),
+                    'active' => User::where('is_active', true)->whereHas('role', function($q) { 
+                        $q->whereIn('name', ['admin', 'keuangan', 'manajemen']); 
+                    })->count(),
                     'admin' => User::whereHas('role', function($q) { $q->where('name', 'admin'); })->count(),
                     'keuangan' => User::whereHas('role', function($q) { $q->where('name', 'keuangan'); })->count(),
                     'manajemen' => User::whereHas('role', function($q) { $q->where('name', 'manajemen'); })->count(),
-                    'customer' => User::whereHas('role', function($q) { $q->where('name', 'customer'); })->count(),
+                    // Hapus customer count karena customer sekarang terpisah di table customers
                 ],
                 'customers' => [
                     'total' => Customer::count(),
@@ -74,7 +78,9 @@ class AdminController extends Controller
     public function getUsers(Request $request)
     {
         try {
-            $query = User::with('role');
+            $query = User::with('role')->whereHas('role', function($q) {
+                $q->whereIn('name', ['admin', 'keuangan', 'manajemen']);
+            });
             
             // Search
             if ($request->filled('search')) {
@@ -140,6 +146,16 @@ class AdminController extends Controller
                 'success' => false,
                 'message' => 'Validation failed',
                 'errors' => $validator->errors()
+            ], 422);
+        }
+        
+        // Validasi tambahan: pastikan role bukan customer
+        $role = Role::find($request->role_id);
+        if (!$role || $role->name === 'customer') {
+            return response()->json([
+                'success' => false,
+                'message' => 'Invalid role. Customer role is not allowed for user management.',
+                'errors' => ['role_id' => ['Customer role cannot be assigned to users.']]
             ], 422);
         }
         
@@ -223,6 +239,16 @@ class AdminController extends Controller
                 'success' => false,
                 'message' => 'Validation failed',
                 'errors' => $validator->errors()
+            ], 422);
+        }
+        
+        // Validasi tambahan: pastikan role bukan customer
+        $role = Role::find($request->role_id);
+        if (!$role || $role->name === 'customer') {
+            return response()->json([
+                'success' => false,
+                'message' => 'Invalid role. Customer role is not allowed for user management.',
+                'errors' => ['role_id' => ['Customer role cannot be assigned to users.']]
             ], 422);
         }
         
@@ -323,7 +349,9 @@ class AdminController extends Controller
     public function getRoles()
     {
         try {
-            $roles = Role::all();
+            // Hanya kembalikan roles untuk user management (admin, keuangan, manajemen)
+            // Role customer dikecualikan karena customer dikelola terpisah di table customers
+            $roles = Role::whereIn('name', ['admin', 'keuangan', 'manajemen'])->get();
             
             return response()->json([
                 'success' => true,
@@ -456,7 +484,10 @@ class AdminController extends Controller
                 'php_version' => PHP_VERSION,
                 'laravel_version' => app()->version(),
                 'database_size' => 0, // Will be calculated if needed
-                'total_users' => User::count(),
+                'total_users' => User::whereHas('role', function($q) { 
+                    $q->whereIn('name', ['admin', 'keuangan', 'manajemen']); 
+                })->count(), // Hanya hitung user dengan role admin/keuangan/manajemen
+                'total_customers' => Customer::count(), // Tambahkan total customers
                 'total_audit_logs' => AuditLog::count(),
                 'disk_usage' => [
                     'total' => disk_total_space(storage_path()),

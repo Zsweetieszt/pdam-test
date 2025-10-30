@@ -401,12 +401,6 @@
         <div class="collapse navbar-collapse" id="navbarNav">
             <ul class="navbar-nav ms-auto">
                 <li class="nav-item">
-                    <a class="nav-link" href="{{ url('/') }}">
-                        <i class="fas fa-home me-1"></i>
-                        Home
-                    </a>
-                </li>
-                <li class="nav-item">
                     <a class="nav-link active" href="{{ route('login') }}">
                         <i class="fas fa-sign-in-alt me-1"></i>
                         Login
@@ -455,7 +449,7 @@
                         <ul class="mb-0" id="client-error-list"></ul>
                     </div>
 
-                    <form method="POST" action="{{ route('login') }}" id="loginForm" novalidate>
+                    <form method="POST" action="{{ route('login.post') }}" id="loginForm" novalidate>
                         @csrf
                         
                         <!-- Phone Number Field -->
@@ -533,9 +527,9 @@
                     <div class="text-center mt-4">
                         <small class="text-muted">
                             <strong>Demo Account:</strong><br>
-                            Admin: 08111111111 / password123<br>
-                            Keuangan: 08222222222 / password123<br>
-                            Manajemen: 08333333333 / password123
+                            Admin: 08111111111 / Password123<br>
+                            Keuangan: 08222222222 / Password123<br>
+                            Manajemen: 08333333333 / Password123
                         </small>
                     </div>
                 </div>

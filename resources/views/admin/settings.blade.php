@@ -725,7 +725,7 @@ async function searchTemplates(page = 1) {
         currentPage = page;
     } catch (error) {
         console.error('Error loading templates:', error);
-        handleApiError(error, 'Gagal memuat data template');
+        handleApiError(error, 'Data Tidak Ada');
     } finally {
         showLoading(false);
     }
@@ -1580,7 +1580,7 @@ async function saveTemplate() {
         
     } catch (error) {
         console.error('Error saving template:', error);
-        handleApiError(error, 'Gagal menyimpan template');
+        handleApiError(error, 'Data Tidak Ada');
     } finally {
         saveButton.disabled = false;
         saveButton.innerHTML = '<i class="fas fa-save me-1"></i>Simpan Template';
@@ -1640,7 +1640,7 @@ async function viewTemplate(id) {
         document.getElementById('templateDetailContent').innerHTML = `
             <div class="text-center py-5">
                 <i class="fas fa-exclamation-triangle fa-3x text-danger mb-3"></i>
-                <p class="text-danger">Gagal memuat detail template</p>
+                <p class="text-danger">Data Tidak Ada</p>
             </div>
         `;
     }

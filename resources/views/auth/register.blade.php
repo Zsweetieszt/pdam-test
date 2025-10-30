@@ -532,12 +532,6 @@
         <div class="collapse navbar-collapse" id="navbarNav">
             <ul class="navbar-nav ms-auto">
                 <li class="nav-item">
-                    <a class="nav-link" href="{{ url('/') }}">
-                        <i class="fas fa-home me-1"></i>
-                        Home
-                    </a>
-                </li>
-                <li class="nav-item">
                     <a class="nav-link" href="{{ route('login') }}">
                         <i class="fas fa-sign-in-alt me-1"></i>
                         Login

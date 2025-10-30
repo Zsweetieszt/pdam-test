@@ -35,7 +35,7 @@
                             <table class="table table-borderless mb-0">
                                 <tr>
                                     <td width="40%" class="text-muted">No. Pelanggan:</td>
-                                    <td><strong>--</strong></td>
+                                    <td><strong>{{ $customer_info['customer_number'] ?? '--' }}</strong></td>
                                 </tr>
                                 <tr>
                                     <td class="text-muted">Nama:</td>
@@ -47,7 +47,7 @@
                                 </tr>
                                 <tr>
                                     <td class="text-muted">Alamat:</td>
-                                    <td><strong>--</strong></td>
+                                    <td><strong>{{ $customer_info['address'] ?? '--' }}</strong></td>
                                 </tr>
                             </table>
                         </div>
@@ -55,11 +55,11 @@
                             <table class="table table-borderless mb-0">
                                 <tr>
                                     <td width="40%" class="text-muted">Tarif:</td>
-                                    <td><strong>-- (Rumah Tangga)</strong></td>
+                                    <td><strong>{{ $customer_info['tariff_name'] ?? '--' }}</strong></td>
                                 </tr>
                                 <tr>
                                     <td class="text-muted">No. Meter:</td>
-                                    <td><strong>--</strong></td>
+                                    <td><strong>{{ $customer_info['meter_number'] ?? '--' }}</strong></td>
                                 </tr>
                                 <tr>
                                     <td class="text-muted">Status:</td>
@@ -67,7 +67,7 @@
                                 </tr>
                                 <tr>
                                     <td class="text-muted">Zona:</td>
-                                    <td><strong>--</strong></td>
+                                    <td><strong>{{ $customer_info['zone_name'] ?? '--' }}</strong></td>
                                 </tr>
                             </table>
                         </div>
@@ -85,12 +85,12 @@
                     </h6>
                 </div>
                 <div class="card-body text-center">
-                    <h2 class="text-success mb-2">-- m³</h2>
+                    <h2 class="text-success mb-2">{{ number_format($current_usage['current_month'] ?? 0) }} m³</h2>
                     <p class="text-muted mb-2">Konsumsi Periode {{ date('M Y') }}</p>
                     <div class="progress" style="height: 8px;">
-                        <div class="progress-bar bg-success" style="width: 65%"></div>
+                        <div class="progress-bar bg-success" style="width: {{ $current_usage['percentage'] ?? 0 }}%"></div>
                     </div>
-                    <small class="text-muted">65% dari rata-rata bulanan</small>
+                    <small class="text-muted">{{ $current_usage['comparison_text'] ?? '--' }}</small>
                 </div>
             </div>
         </div>
@@ -107,7 +107,7 @@
                         </div>
                         <div class="flex-grow-1 ms-3">
                             <h6 class="mb-1">Tagihan Pending</h6>
-                            <h4 class="mb-0">--</h4>
+                            <h4 class="mb-0">{{ $billing_status['pending_count'] ?? 0 }}</h4>
                             <small class="opacity-75">Belum dibayar</small>
                         </div>
                     </div>
@@ -124,7 +124,7 @@
                         </div>
                         <div class="flex-grow-1 ms-3">
                             <h6 class="mb-1">Jatuh Tempo</h6>
-                            <h4 class="mb-0">-- Hari</h4>
+                            <h4 class="mb-0">{{ $billing_status['days_remaining'] ?? '--' }}</h4>
                             <small class="opacity-75">Tersisa waktu</small>
                         </div>
                     </div>
@@ -141,7 +141,7 @@
                         </div>
                         <div class="flex-grow-1 ms-3">
                             <h6 class="mb-1">Lunas Bulan Ini</h6>
-                            <h4 class="mb-0">--</h4>
+                            <h4 class="mb-0">{{ $billing_status['paid_this_month'] ?? 0 }}</h4>
                             <small class="opacity-75">Pembayaran</small>
                         </div>
                     </div>
@@ -158,7 +158,7 @@
                         </div>
                         <div class="flex-grow-1 ms-3">
                             <h6 class="mb-1">Total Bayar</h6>
-                            <h4 class="mb-0">-- IDR</h4>
+                            <h4 class="mb-0">Rp {{ number_format($billing_status['total_paid_year'] ?? 0) }}</h4>
                             <small class="opacity-75">Tahun ini</small>
                         </div>
                     </div>
@@ -184,7 +184,8 @@
                     </div>
                 </div>
                 <div class="card-body">
-                    <!-- Sample Bill Card -->
+                    @if($current_bill)
+                    <!-- Current Bill Card -->
                     <div class="card border-start border-warning border-4 mb-3">
                         <div class="card-body">
                             <div class="row align-items-center">
@@ -194,11 +195,11 @@
                                 </div>
                                 <div class="col-md-3">
                                     <p class="mb-1 text-muted">Pemakaian:</p>
-                                    <h6 class="mb-0">-- m³</h6>
+                                    <h6 class="mb-0">{{ number_format($current_bill['usage'] ?? 0) }} m³</h6>
                                 </div>
                                 <div class="col-md-3">
                                     <p class="mb-1 text-muted">Total Tagihan:</p>
-                                    <h5 class="mb-0 text-warning">IDR --</h5>
+                                    <h5 class="mb-0 text-warning">Rp {{ number_format($current_bill['amount'] ?? 0) }}</h5>
                                 </div>
                                 <div class="col-md-3 text-end">
                                     <button class="btn btn-warning btn-sm me-2" onclick="viewBillDetail()">
@@ -211,13 +212,14 @@
                             </div>
                         </div>
                     </div>
-
+                    @else
                     <!-- No Bills Message -->
                     <div class="text-center py-4">
                         <i class="fas fa-receipt fa-3x text-muted mb-3"></i>
                         <h6 class="text-muted">Belum ada tagihan yang perlu dibayar</h6>
                         <p class="text-muted mb-0">Tagihan baru akan muncul setiap awal bulan</p>
                     </div>
+                    @endif
                 </div>
             </div>
         </div>
@@ -293,7 +295,9 @@
                 </div>
                 <div class="card-body">
                     <div class="timeline">
-                        <!-- Sample Timeline Items -->
+                        @if($recent_activities)
+                        @if(isset($recent_activities['payment']))
+                        <!-- Payment Activity -->
                         <div class="d-flex mb-3">
                             <div class="flex-shrink-0">
                                 <div class="rounded-circle bg-success d-flex align-items-center justify-content-center" style="width: 32px; height: 32px;">
@@ -302,11 +306,14 @@
                             </div>
                             <div class="flex-grow-1 ms-3">
                                 <h6 class="mb-1">Pembayaran Berhasil</h6>
-                                <p class="text-muted mb-0">Tagihan bulan lalu telah dibayar - IDR --</p>
-                                <small class="text-muted">--</small>
+                                <p class="text-muted mb-0">Tagihan bulan lalu telah dibayar - Rp {{ number_format($recent_activities['payment']['amount'] ?? 0) }}</p>
+                                <small class="text-muted">{{ $recent_activities['payment']['date'] ? \Carbon\Carbon::parse($recent_activities['payment']['date'])->format('d M Y H:i') : '--' }}</small>
                             </div>
                         </div>
+                        @endif
 
+                        @if(isset($recent_activities['bill']))
+                        <!-- New Bill Activity -->
                         <div class="d-flex mb-3">
                             <div class="flex-shrink-0">
                                 <div class="rounded-circle bg-info d-flex align-items-center justify-content-center" style="width: 32px; height: 32px;">
@@ -316,10 +323,13 @@
                             <div class="flex-grow-1 ms-3">
                                 <h6 class="mb-1">Tagihan Baru</h6>
                                 <p class="text-muted mb-0">Tagihan bulan ini telah dibuat</p>
-                                <small class="text-muted">--</small>
+                                <small class="text-muted">{{ $recent_activities['bill']['date'] ? \Carbon\Carbon::parse($recent_activities['bill']['date'])->format('d M Y') : '--' }}</small>
                             </div>
                         </div>
+                        @endif
 
+                        @if(isset($recent_activities['whatsapp']))
+                        <!-- WhatsApp Notification -->
                         <div class="d-flex">
                             <div class="flex-shrink-0">
                                 <div class="rounded-circle bg-primary d-flex align-items-center justify-content-center" style="width: 32px; height: 32px;">
@@ -329,13 +339,15 @@
                             <div class="flex-grow-1 ms-3">
                                 <h6 class="mb-1">Notifikasi WhatsApp</h6>
                                 <p class="text-muted mb-0">Reminder pembayaran dikirim ke {{ auth()->user()->phone }}</p>
-                                <small class="text-muted">--</small>
+                                <small class="text-muted">{{ $recent_activities['whatsapp']['date'] ? \Carbon\Carbon::parse($recent_activities['whatsapp']['date'])->format('d M Y H:i') : '--' }}</small>
                             </div>
                         </div>
-                    </div>
-
-                    <div class="text-center mt-4">
-                        <small class="text-muted">Tidak ada aktivitas terbaru</small>
+                        @endif
+                        @else
+                        <div class="text-center mt-4">
+                            <small class="text-muted">Tidak ada aktivitas terbaru</small>
+                        </div>
+                        @endif
                     </div>
                 </div>
             </div>
@@ -384,37 +396,4 @@
     </div>
 </div>
 
-<script>
-function viewBillDetail() {
-    alert('Menampilkan detail tagihan...');
-}
-
-function payBill() {
-    if (confirm('Lanjutkan ke halaman pembayaran?')) {
-        alert('Redirect ke payment gateway...');
-    }
-}
-
-function viewAllBills() {
-    window.location.href = '{{ route("customer.bills") }}';
-}
-
-function paymentHistory() {
-    window.location.href = '{{ route("customer.payments") }}';
-}
-
-function downloadBill() {
-    alert('Download tagihan PDF...');
-}
-
-function reportIssue() {
-    if (confirm('Laporkan masalah ke customer service?')) {
-        alert('Formulir laporan akan dibuka...');
-    }
-}
-
-function updateProfile() {
-    window.location.href = '{{ route("profile.index") }}';
-}
-</script>
 @endsection

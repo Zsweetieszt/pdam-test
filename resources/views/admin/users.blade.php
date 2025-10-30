@@ -12,7 +12,7 @@
                             <i class="fas fa-users-cog text-primary me-2"></i>
                             Manajemen User
                         </h4>
-                        <p class="text-muted mb-0">Kelola semua user sistem: Admin, Keuangan, Manajemen, Customer</p>
+                        <p class="text-muted mb-0">Kelola semua user sistem: Admin, Keuangan, Manajemen</p>
                     </div>
                     <div class="col-md-4 col-sm-6 text-end">
                         <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#userModal" onclick="openUserModal('add')">
@@ -26,7 +26,7 @@
 
         <!-- Quick Stats -->
         <div class="row mb-4">
-            <div class="col-lg-3 col-md-6 mb-3 mb-lg-0">
+            <div class="col-lg-4 col-md-6 mb-3 mb-lg-0">
                 <div class="card bg-primary text-white border-0 h-100">
                     <div class="card-body text-center py-3">
                         <h4 id="total-users" class="mb-1">-</h4>
@@ -34,7 +34,7 @@
                     </div>
                 </div>
             </div>
-            <div class="col-lg-3 col-md-6 mb-3 mb-lg-0">
+            <div class="col-lg-4 col-md-6 mb-3 mb-lg-0">
                 <div class="card bg-success text-white border-0 h-100">
                     <div class="card-body text-center py-3">
                         <h4 id="active-users" class="mb-1">-</h4>
@@ -42,19 +42,11 @@
                     </div>
                 </div>
             </div>
-            <div class="col-lg-3 col-md-6 mb-3 mb-md-0">
+            <div class="col-lg-4 col-md-6">
                 <div class="card bg-info text-white border-0 h-100">
                     <div class="card-body text-center py-3">
                         <h4 id="admin-count" class="mb-1">-</h4>
                         <small>Admin</small>
-                    </div>
-                </div>
-            </div>
-            <div class="col-lg-3 col-md-6">
-                <div class="card bg-warning text-dark border-0 h-100">
-                    <div class="card-body text-center py-3">
-                        <h4 id="customer-count" class="mb-1">-</h4>
-                        <small>Customer</small>
                     </div>
                 </div>
             </div>
@@ -76,7 +68,6 @@
                     <option value="admin">Admin</option>
                     <option value="keuangan">Keuangan</option>
                     <option value="manajemen">Manajemen</option>
-                    <option value="customer">Customer</option>
                 </select>
             </div>
             <div class="col-lg-2 col-md-3 col-sm-6 mb-3 mb-lg-0">
@@ -604,8 +595,8 @@ function setupSearchHandlers() {
 
 // Load user statistics dari API /api/admin/dashboard-stats
 async function loadUserStats() {
-    // Set loading state
-    ['total-users', 'active-users', 'admin-count', 'customer-count'].forEach(id => {
+    // Set loading state - hanya untuk admin, keuangan, manajemen
+    ['total-users', 'active-users', 'admin-count'].forEach(id => {
         const el = document.getElementById(id);
         if (el) el.textContent = '...';
     });
@@ -622,12 +613,12 @@ async function loadUserStats() {
         document.getElementById('total-users').textContent = stats.users.total;
         document.getElementById('active-users').textContent = stats.users.active;
         document.getElementById('admin-count').textContent = stats.users.admin;
-        document.getElementById('customer-count').textContent = stats.users.customer;
+        // Hapus customer count karena customer dikelola terpisah
     } catch (error) {
         console.error('Error loading stats:', error);
-        handleApiError(error, 'Gagal memuat statistik dashboard!');
-        // Set default values on error
-        ['total-users', 'active-users', 'admin-count', 'customer-count'].forEach(id => {
+        handleApiError(error, 'Data Tidak Ada');
+        // Set default values on error - hanya untuk admin, keuangan, manajemen
+        ['total-users', 'active-users', 'admin-count'].forEach(id => {
             const el = document.getElementById(id);
             if (el) el.textContent = '0';
         });
@@ -650,23 +641,27 @@ async function loadRoles() {
         
         if (!roleSelect || !roleFilter) return;
         
-        // Populate modal role select
+        // Populate modal role select - hanya role admin, keuangan, manajemen
         roleSelect.innerHTML = '<option value="">Pilih Role</option>';
         roles.forEach(role => {
+            // Skip customer role
+            if (role.name === 'customer') return;
             const description = role.name.charAt(0).toUpperCase() + role.name.slice(1);
             roleSelect.innerHTML += `<option value="${role.id}">${description}</option>`;
         });
 
-        // Populate filter role select
+        // Populate filter role select - hanya role admin, keuangan, manajemen
         roleFilter.innerHTML = '<option value="">Semua Role</option>';
         roles.forEach(role => {
+            // Skip customer role
+            if (role.name === 'customer') return;
             const description = role.name.charAt(0).toUpperCase() + role.name.slice(1);
             roleFilter.innerHTML += `<option value="${role.name}">${description}</option>`;
         });
 
     } catch (error) {
         console.error('Error loading roles:', error);
-        showAlert('Gagal memuat data roles!', 'danger');
+        showAlert('Data Tidak Ada', 'danger');
     }
 }
 
@@ -691,10 +686,12 @@ async function searchUsers(page = 1) {
                 sort_field: sortField,
                 sort_direction: sortDirection,
                 search: searchTerm,
-                // Filters sesuai API DataTableController.php
+                // Filters sesuai API DataTableController.php - hanya role admin, keuangan, manajemen
                 filters: JSON.stringify({
                     role_id: roleFilterId, // Kirim ID role
-                    is_active: statusFilter === '1' ? true : (statusFilter === '0' ? false : undefined)
+                    is_active: statusFilter === '1' ? true : (statusFilter === '0' ? false : undefined),
+                    // Exclude customer role
+                    exclude_roles: ['customer']
                 })
             }
         });
@@ -709,7 +706,7 @@ async function searchUsers(page = 1) {
         currentPage = page;
     } catch (error) {
         console.error('Error loading users:', error);
-        handleApiError(error, 'Gagal memuat data user. Pastikan API datatables/users berfungsi dan terotentikasi.');
+        handleApiError(error, 'Data Tidak Ada');
     } finally {
         showLoading(false);
     }
@@ -719,7 +716,13 @@ async function searchUsers(page = 1) {
 function displayUsers(data) {
     const tbody = document.getElementById('usersTableBody');
     
-    if (!data.data || data.data.length === 0) {
+    // Filter out customer role users
+    const filteredData = {
+        ...data,
+        data: data.data.filter(user => user.role?.name !== 'customer')
+    };
+    
+    if (!filteredData.data || filteredData.data.length === 0) {
         tbody.innerHTML = `
             <tr>
                 <td colspan="8" class="text-center py-5">
@@ -734,7 +737,7 @@ function displayUsers(data) {
         return;
     }
     
-    tbody.innerHTML = data.data.map((user, index) => {
+    tbody.innerHTML = filteredData.data.map((user, index) => {
         const rowNumber = ((currentPage - 1) * perPage) + index + 1;
         
         const roleName = user.role?.name || 'unknown';
@@ -1065,7 +1068,7 @@ function getRoleBadgeClass(role) {
         case 'admin': return 'bg-danger';
         case 'keuangan': return 'bg-success';
         case 'manajemen': return 'bg-info';
-        case 'customer': return 'bg-primary';
+        // Customer role tidak ditampilkan di manajemen user
         default: return 'bg-secondary';
     }
 }

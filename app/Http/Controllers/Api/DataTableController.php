@@ -216,7 +216,9 @@ class DataTableController extends Controller
     {
         switch ($table) {
             case 'users':
-                return User::with('role');
+                return User::with('role')->whereHas('role', function($q) {
+                    $q->whereIn('name', ['admin', 'keuangan', 'manajemen']);
+                });
             case 'customers':
                 return Customer::with('user');
             case 'bills':

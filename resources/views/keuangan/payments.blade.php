@@ -11,12 +11,12 @@
                 </h5>
             </div>
             <div class="card-body">
-                <!-- Stats Cards -->
+                <!-- Stats Cards (API integrated) -->
                 <div class="row mb-4">
                     <div class="col-md-3">
                         <div class="card bg-warning text-dark">
                             <div class="card-body text-center">
-                                <h4 id="pending-payments-count">12</h4>
+                                <h4 id="pending-payments-count">--</h4>
                                 <small>Pembayaran Pending</small>
                             </div>
                         </div>
@@ -24,7 +24,7 @@
                     <div class="col-md-3">
                         <div class="card bg-success text-white">
                             <div class="card-body text-center">
-                                <h4 id="verified-payments-count">45</h4>
+                                <h4 id="verified-payments-count">--</h4>
                                 <small>Terverifikasi</small>
                             </div>
                         </div>
@@ -32,7 +32,7 @@
                     <div class="col-md-3">
                         <div class="card bg-danger text-white">
                             <div class="card-body text-center">
-                                <h4 id="rejected-payments-count">3</h4>
+                                <h4 id="rejected-payments-count">--</h4>
                                 <small>Ditolak</small>
                             </div>
                         </div>
@@ -40,7 +40,7 @@
                     <div class="col-md-3">
                         <div class="card bg-info text-white">
                             <div class="card-body text-center">
-                                <h4>Rp 15.2M</h4>
+                                <h4 id="total-revenue">Rp --</h4>
                                 <small>Total Bulan Ini</small>
                             </div>
                         </div>
@@ -420,8 +420,8 @@ let paymentConfirmData = {};
 // Initialize when DOM is ready
 document.addEventListener('DOMContentLoaded', function() {
     initializePaymentPage();
-    loadDummyUnpaidBills();
-    loadDummyPaymentHistory();
+    loadUnpaidBills();
+    loadPaymentHistory();
     
     // Set default payment date to today
     document.getElementById('payment_date').value = new Date().toISOString().split('T')[0];
@@ -431,125 +431,67 @@ document.addEventListener('DOMContentLoaded', function() {
     document.getElementById('per-page-select').addEventListener('change', function() {
         perPage = parseInt(this.value);
         currentPage = 1;
-        loadDummyPaymentHistory();
+        loadPaymentHistory();
     });
 });
 
 // Initialize payment page
 function initializePaymentPage() {
-    // Initialize without axios for dummy data
-    console.log('Payment page initialized with dummy data');
+    console.log('Payment page initialized with API integration');
 }
 
-// Load unpaid bills for payment form (DUMMY DATA)
-function loadDummyUnpaidBills() {
+// Load unpaid bills from API
+async function loadUnpaidBills() {
+    try {
+        const response = await fetch('/api/bills?status=pending&status=overdue&status=sent&per_page=50', {
+            headers: {
+                'Authorization': 'Bearer ' + localStorage.getItem('auth_token'),
+                'Accept': 'application/json',
+            }
+        });
+
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+
+        const data = await response.json();
+        displayUnpaidBills(data.data || []);
+    } catch (error) {
+        console.error('Error loading unpaid bills:', error);
+        showToast('Data Belum Ada', 'error');
+        // Fallback to empty list
+        displayUnpaidBills([]);
+    }
+}
+
+// Display unpaid bills in select dropdown
+function displayUnpaidBills(bills) {
     const billSelect = document.getElementById('bill_id');
     billSelect.innerHTML = '<option value="">Pilih tagihan yang akan dibayar...</option>';
     
-    // Dummy unpaid bills data
-    unpaidBills = [
-        {
-            id: 1,
-            bill_number: 'BILL-202508-001',
-            total_amount: 225000,
-            status: 'pending',
-            meter: {
-                customer: {
-                    user: {
-                        name: 'Ahmad Yani',
-                        phone: '085723302116'
-                    }
-                }
-            },
-            billing_period: {
-                period_month: 8,
-                period_year: 2025
-            }
-        },
-        {
-            id: 2,
-            bill_number: 'BILL-202508-002',
-            total_amount: 275000,
-            status: 'overdue',
-            meter: {
-                customer: {
-                    user: {
-                        name: 'Maria Sari',
-                        phone: '081234567891'
-                    }
-                }
-            },
-            billing_period: {
-                period_month: 8,
-                period_year: 2025
-            }
-        },
-        {
-            id: 3,
-            bill_number: 'BILL-202508-003',
-            total_amount: 310000,
-            status: 'sent',
-            meter: {
-                customer: {
-                    user: {
-                        name: 'Siti Nurhaliza',
-                        phone: '081234567892'
-                    }
-                }
-            },
-            billing_period: {
-                period_month: 8,
-                period_year: 2025
-            }
-        },
-        {
-            id: 4,
-            bill_number: 'BILL-202508-004',
-            total_amount: 180000,
-            status: 'pending',
-            meter: {
-                customer: {
-                    user: {
-                        name: 'Budi Santoso',
-                        phone: '081234567893'
-                    }
-                }
-            },
-            billing_period: {
-                period_month: 8,
-                period_year: 2025
-            }
-        },
-        {
-            id: 5,
-            bill_number: 'BILL-202508-005',
-            total_amount: 450000,
-            status: 'overdue',
-            meter: {
-                customer: {
-                    user: {
-                        name: 'Indira Sari',
-                        phone: '081234567894'
-                    }
-                }
-            },
-            billing_period: {
-                period_month: 8,
-                period_year: 2025
-            }
-        }
-    ];
-    
-    unpaidBills.forEach(bill => {
-        const customerName = bill.meter?.customer?.user?.name || 'Unknown';
+    bills.forEach(bill => {
+        const customerName = bill.customer_name || 'Unknown';
         const amount = formatRupiah(bill.total_amount || 0);
+        const period = `${getMonthName(bill.period_month)} ${bill.period_year}`;
         
         const option = document.createElement('option');
         option.value = bill.id;
-        option.textContent = `${bill.bill_number} - ${customerName} (${amount})`;
-        option.dataset.bill = JSON.stringify(bill);
+        option.textContent = `${bill.bill_number} - ${customerName} (${amount}) - ${period}`;
+        option.dataset.bill = JSON.stringify({
+            id: bill.id,
+            bill_number: bill.bill_number,
+            total_amount: bill.total_amount,
+            status: bill.status,
+            period_month: bill.period_month,
+            period_year: bill.period_year,
+            customer_name: bill.customer_name,
+            customer_phone: bill.customer_phone
+        });
         billSelect.appendChild(option);
     });
+    
+    // Store for global access
+    unpaidBills = bills;
 }
 
 // Handle bill selection change
@@ -562,8 +504,8 @@ function onBillSelectionChange() {
         const billData = JSON.parse(select.selectedOptions[0].dataset.bill);
         
         // Show bill details
-        document.getElementById('bill-customer').textContent = billData.meter?.customer?.user?.name || 'Unknown';
-        document.getElementById('bill-period').textContent = `${billData.billing_period?.period_month}/${billData.billing_period?.period_year}` || '-';
+        document.getElementById('bill-customer').textContent = billData.customer_name || 'Unknown';
+        document.getElementById('bill-period').textContent = `${getMonthName(billData.period_month)} ${billData.period_year}`;
         document.getElementById('bill-total').textContent = formatRupiah(billData.total_amount || 0);
         document.getElementById('bill-status').innerHTML = `<span class="badge bg-${getStatusColor(billData.status)}">${getStatusText(billData.status)}</span>`;
         
@@ -577,231 +519,75 @@ function onBillSelectionChange() {
     }
 }
 
-// REQ-F-6.3: Load payment history (DUMMY DATA)
-function loadDummyPaymentHistory() {
-    // Dummy payment history data
-    const dummyPayments = [
-        {
-            id: 1,
-            payment_number: 'PAY2025001',
-            amount: 225000,
-            payment_method: 'transfer',
-            payment_date: '2025-08-20',
-            status: 'pending',
-            payment_proof_path: '/storage/payment-proofs/proof1.jpg',
-            created_at: '2025-08-20 10:30:00',
-            bill: {
-                bill_number: 'BILL-202508-001',
-                total_amount: 225000,
-                meter: {
-                    customer: {
-                        user: {
-                            name: 'Ahmad Yani',
-                            phone: '081234567890'
-                        }
-                    }
-                }
-            },
-            created_by: {
-                name: 'Staff Keuangan'
+// Load payment history from API
+async function loadPaymentHistory() {
+    const tbody = document.getElementById('payments-table-body');
+
+    // Show loading
+    tbody.innerHTML = `
+        <tr>
+            <td colspan="9" class="text-center py-4">
+                <div class="spinner-border text-primary" role="status">
+                    <span class="visually-hidden">Loading...</span>
+                </div>
+                <p class="mt-2 mb-0 text-muted">Memuat data pembayaran...</p>
+            </td>
+        </tr>
+    `;
+
+    try {
+        // Build query parameters
+        const params = new URLSearchParams({
+            page: currentPage,
+            per_page: perPage,
+            sort_field: 'created_at',
+            sort_direction: 'desc'
+        });
+
+        // Add filters
+        if (currentFilters.status) params.append('status', currentFilters.status);
+        if (currentFilters.payment_method) params.append('payment_method', currentFilters.payment_method);
+        if (currentFilters.date_from) params.append('date_from', currentFilters.date_from);
+        if (currentFilters.date_to) params.append('date_to', currentFilters.date_to);
+        if (currentFilters.search) params.append('search', currentFilters.search);
+
+        const response = await fetch(`/api/payments/history?${params.toString()}`, {
+            headers: {
+                'Authorization': 'Bearer ' + localStorage.getItem('auth_token'),
+                'Accept': 'application/json',
             }
-        },
-        {
-            id: 2,
-            payment_number: 'PAY2025002',
-            amount: 275000,
-            payment_method: 'cash',
-            payment_date: '2025-08-19',
-            status: 'verified',
-            payment_proof_path: null,
-            created_at: '2025-08-19 14:15:00',
-            verified_at: '2025-08-19 15:00:00',
-            verification_notes: 'Pembayaran tunai di kantor PDAM',
-            bill: {
-                bill_number: 'BILL-202508-002',
-                total_amount: 275000,
-                meter: {
-                    customer: {
-                        user: {
-                            name: 'Maria Sari',
-                            phone: '081234567891'
-                        }
-                    }
-                }
-            },
-            created_by: {
-                name: 'Staff Keuangan'
-            },
-            verified_by: {
-                name: 'Manager Keuangan'
-            }
-        },
-        {
-            id: 3,
-            payment_number: 'PAY2025003',
-            amount: 180000,
-            payment_method: 'online',
-            payment_date: '2025-08-18',
-            status: 'verified',
-            payment_proof_path: '/storage/payment-proofs/proof3.jpg',
-            reference_number: 'TXN123456789',
-            created_at: '2025-08-18 09:45:00',
-            verified_at: '2025-08-18 16:30:00',
-            bill: {
-                bill_number: 'BILL-202508-004',
-                total_amount: 180000,
-                meter: {
-                    customer: {
-                        user: {
-                            name: 'Budi Santoso',
-                            phone: '081234567893'
-                        }
-                    }
-                }
-            },
-            created_by: {
-                name: 'System Auto'
-            },
-            verified_by: {
-                name: 'Manager Keuangan'
-            }
-        },
-        {
-            id: 4,
-            payment_number: 'PAY2025004',
-            amount: 310000,
-            payment_method: 'mobile_banking',
-            payment_date: '2025-08-17',
-            status: 'rejected',
-            payment_proof_path: '/storage/payment-proofs/proof4.jpg',
-            reference_number: 'MB987654321',
-            verification_notes: 'Bukti pembayaran tidak jelas, mohon upload ulang',
-            created_at: '2025-08-17 11:20:00',
-            verified_at: '2025-08-17 17:45:00',
-            bill: {
-                bill_number: 'BILL-202508-003',
-                total_amount: 310000,
-                meter: {
-                    customer: {
-                        user: {
-                            name: 'Siti Nurhaliza',
-                            phone: '081234567892'
-                        }
-                    }
-                }
-            },
-            created_by: {
-                name: 'Customer Self'
-            },
-            verified_by: {
-                name: 'Staff Keuangan'
-            }
-        },
-        {
-            id: 5,
-            payment_number: 'PAY2025005',
-            amount: 450000,
-            payment_method: 'transfer',
-            payment_date: '2025-08-16',
-            status: 'pending',
-            payment_proof_path: '/storage/payment-proofs/proof5.jpg',
-            reference_number: 'TRF555444333',
-            notes: 'Pembayaran melalui Internet Banking BCA',
-            created_at: '2025-08-16 13:10:00',
-            bill: {
-                bill_number: 'BILL-202508-005',
-                total_amount: 450000,
-                meter: {
-                    customer: {
-                        user: {
-                            name: 'Indira Sari',
-                            phone: '081234567894'
-                        }
-                    }
-                }
-            },
-            created_by: {
-                name: 'Customer Self'
-            }
-        },
-        {
-            id: 6,
-            payment_number: 'PAY2025006',
-            amount: 195000,
-            payment_method: 'cash',
-            payment_date: '2025-08-15',
-            status: 'verified',
-            payment_proof_path: null,
-            created_at: '2025-08-15 08:30:00',
-            verified_at: '2025-08-15 08:35:00',
-            verification_notes: 'Pembayaran langsung di loket',
-            bill: {
-                bill_number: 'BILL-202507-055',
-                total_amount: 195000,
-                meter: {
-                    customer: {
-                        user: {
-                            name: 'Rahmat Hidayat',
-                            phone: '081234567895'
-                        }
-                    }
-                }
-            },
-            created_by: {
-                name: 'Staff Loket'
-            },
-            verified_by: {
-                name: 'Staff Loket'
-            }
+        });
+
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
         }
-    ];
-    
-    // Apply filters if any
-    let filteredPayments = dummyPayments;
-    
-    if (currentFilters.status) {
-        filteredPayments = filteredPayments.filter(p => p.status === currentFilters.status);
+
+        const data = await response.json();
+        displayPayments(data.data || []);
+        updatePagination(data);
+        updateStats(data);
+
+        // Store for global access
+        paymentData = data.data || [];
+    } catch (error) {
+        console.error('Error loading payment history:', error);
+        tbody.innerHTML = `
+            <tr>
+                <td colspan="9" class="text-center py-4">
+                    <i class="fas fa-exclamation-triangle fa-3x text-danger mb-3"></i>
+                    <h6 class="text-danger mb-2">Data Tidak Ada</h6>
+                    <p class="text-muted mb-0">Terjadi kesalahan saat memuat data pembayaran</p>
+                </td>
+            </tr>
+        `;
+        showToast('Data Belum Ada', 'error');
     }
-    
-    if (currentFilters.payment_method) {
-        filteredPayments = filteredPayments.filter(p => p.payment_method === currentFilters.payment_method);
-    }
-    
-    if (currentFilters.date_from) {
-        filteredPayments = filteredPayments.filter(p => p.payment_date >= currentFilters.date_from);
-    }
-    
-    if (currentFilters.date_to) {
-        filteredPayments = filteredPayments.filter(p => p.payment_date <= currentFilters.date_to);
-    }
-    
-    // Simulate pagination
-    const startIndex = (currentPage - 1) * perPage;
-    const endIndex = startIndex + perPage;
-    const pagedPayments = filteredPayments.slice(startIndex, endIndex);
-    
-    // Create pagination data
-    const paginationData = {
-        current_page: currentPage,
-        last_page: Math.ceil(filteredPayments.length / perPage),
-        per_page: perPage,
-        total: filteredPayments.length,
-        prev_page_url: currentPage > 1 ? true : null,
-        next_page_url: currentPage < Math.ceil(filteredPayments.length / perPage) ? true : null
-    };
-    
-    displayPayments(pagedPayments);
-    updatePagination(paginationData);
-    updateDummyStats(dummyPayments);
-    
-    // Store for global access
-    paymentData = filteredPayments;
 }
 
 // Display payments in table
 function displayPayments(payments) {
     const tbody = document.getElementById('payments-table-body');
-    
+
     if (!payments || payments.length === 0) {
         tbody.innerHTML = `
             <tr>
@@ -813,16 +599,16 @@ function displayPayments(payments) {
         `;
         return;
     }
-    
+
     tbody.innerHTML = payments.map(payment => {
-        const customer = payment.bill?.meter?.customer?.user?.name || 'Unknown';
-        const billNumber = payment.bill?.bill_number || '-';
-        const proofHtml = payment.payment_proof_path ? 
+        const customer = payment.customer_name || 'Unknown';
+        const billNumber = payment.bill_number || '-';
+        const proofHtml = payment.payment_proof_path ?
             `<button class="btn btn-sm btn-outline-primary" onclick="viewPaymentProof(${payment.id})" title="Lihat Bukti">
                 <i class="fas fa-image"></i>
-            </button>` : 
+            </button>` :
             '<span class="text-muted">-</span>';
-        
+
         return `
             <tr data-payment-id="${payment.id}">
                 <td><strong>${payment.payment_number}</strong></td>
@@ -838,7 +624,7 @@ function displayPayments(payments) {
                         <button class="btn btn-info" onclick="viewPaymentDetail(${payment.id})" title="Detail">
                             <i class="fas fa-eye"></i>
                         </button>
-                        ${payment.status === 'pending' ? 
+                        ${payment.status === 'pending' ?
                             `<button class="btn btn-success" onclick="openVerifyModal(${payment.id})" title="Verifikasi">
                                 <i class="fas fa-check"></i>
                             </button>` : ''}
@@ -921,60 +707,52 @@ function showPaymentConfirmation() {
     confirmModal.show();
 }
 
-// REQ-F-6.2: Confirm and submit payment (DUMMY IMPLEMENTATION)
-function confirmPaymentSubmission() {
+// Confirm and submit payment
+async function confirmPaymentSubmission() {
     const confirmModal = bootstrap.Modal.getInstance(document.getElementById('paymentConfirmModal'));
     const addModal = bootstrap.Modal.getInstance(document.getElementById('addPaymentModal'));
-    
-    // Simulate API call with delay
+
     showToast('Menyimpan pembayaran...', 'info');
-    
-    setTimeout(() => {
-        // Generate new payment ID
-        const newPaymentId = Math.max(...paymentData.map(p => p.id), 0) + 1;
-        
-        // Get selected bill
-        const billSelect = document.getElementById('bill_id');
-        const selectedBill = JSON.parse(billSelect.selectedOptions[0].dataset.bill);
-        
-        // Create new payment object
-        const newPayment = {
-            id: newPaymentId,
-            payment_number: `PAY2025${String(newPaymentId + 1000).padStart(3, '0')}`,
-            amount: parseFloat(paymentConfirmData.amount),
-            payment_method: paymentConfirmData.payment_method,
-            payment_date: paymentConfirmData.payment_date,
-            status: 'pending',
-            payment_proof_path: paymentConfirmData.payment_proof ? '/storage/payment-proofs/dummy.jpg' : null,
-            reference_number: paymentConfirmData.reference_number,
-            notes: paymentConfirmData.notes,
-            created_at: new Date().toISOString(),
-            bill: {
-                bill_number: selectedBill.bill_number,
-                total_amount: selectedBill.total_amount,
-                meter: selectedBill.meter
+
+    try {
+        // Prepare form data for API submission
+        const formData = new FormData(document.getElementById('paymentForm'));
+
+        const response = await fetch('/api/payments', {
+            method: 'POST',
+            headers: {
+                'Authorization': 'Bearer ' + localStorage.getItem('auth_token'),
+                'Accept': 'application/json',
             },
-            created_by: {
-                name: 'Staff Keuangan (Current User)'
-            }
-        };
-        
-        // Add to dummy data (simulate database insert)
-        paymentData.unshift(newPayment);
-        
+            body: formData
+        });
+
+        if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.message || 'Failed to submit payment');
+        }
+
+        const result = await response.json();
         showToast('Pembayaran berhasil disimpan!', 'success');
+
+        // Close modals
         confirmModal.hide();
         addModal.hide();
-        loadDummyPaymentHistory();
-        loadDummyUnpaidBills(); // Refresh unpaid bills
-    }, 1500);
+
+        // Refresh data
+        loadPaymentHistory();
+        loadUnpaidBills();
+    } catch (error) {
+        console.error('Error submitting payment:', error);
+        showToast('Gagal menyimpan pembayaran: ' + error.message, 'error');
+    }
 }
 
-// REQ-F-6.3: View payment detail (DUMMY IMPLEMENTATION)
-function viewPaymentDetail(paymentId) {
+// REQ-F-6.3: View payment detail
+async function viewPaymentDetail(paymentId) {
     const modal = new bootstrap.Modal(document.getElementById('paymentDetailModal'));
     const content = document.getElementById('payment-detail-content');
-    
+
     // Show loading state
     content.innerHTML = `
         <div class="text-center py-4">
@@ -984,32 +762,37 @@ function viewPaymentDetail(paymentId) {
             <p class="mt-2 mb-0 text-muted">Memuat detail pembayaran...</p>
         </div>
     `;
-    
+
     modal.show();
-    
-    // Simulate API delay
-    setTimeout(() => {
-        // Find payment in dummy data
-        const payment = paymentData.find(p => p.id === paymentId);
-        
-        if (payment) {
-            displayPaymentDetail(payment);
-        } else {
-            content.innerHTML = `
-                <div class="alert alert-danger">
-                    <i class="fas fa-exclamation-triangle me-2"></i>
-                    Gagal memuat detail pembayaran: Data tidak ditemukan
-                </div>
-            `;
+
+    try {
+        const response = await fetch(`/api/payments/${paymentId}`, {
+            headers: {
+                'Authorization': 'Bearer ' + localStorage.getItem('auth_token'),
+                'Accept': 'application/json',
+            }
+        });
+
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
         }
-    }, 800);
+
+        const payment = await response.json();
+        displayPaymentDetail(payment);
+    } catch (error) {
+        console.error('Error fetching payment details:', error);
+        content.innerHTML = `
+            <div class="alert alert-danger">
+                <i class="fas fa-exclamation-triangle me-2"></i>
+                Data Tidak Ada
+            </div>
+        `;
+        showToast('Data Tidak Ada', 'error');
+    }
 }
 
 // Display payment detail in modal
 function displayPaymentDetail(payment) {
-    const customer = payment.bill?.meter?.customer?.user || {};
-    const bill = payment.bill || {};
-    
     const detailHtml = `
         <div class="row mb-3">
             <div class="col-md-6">
@@ -1026,33 +809,33 @@ function displayPaymentDetail(payment) {
             <div class="col-md-6">
                 <h6 class="text-primary">Informasi Tagihan</h6>
                 <table class="table table-sm">
-                    <tr><td><strong>No. Tagihan:</strong></td><td>${bill.bill_number || '-'}</td></tr>
-                    <tr><td><strong>Pelanggan:</strong></td><td>${customer.name || 'Unknown'}</td></tr>
-                    <tr><td><strong>No. Telepon:</strong></td><td>${customer.phone || '-'}</td></tr>
-                    <tr><td><strong>Periode:</strong></td><td>${bill.billing_period?.period_month || '-'}/${bill.billing_period?.period_year || '-'}</td></tr>
-                    <tr><td><strong>Total Tagihan:</strong></td><td>${formatRupiah(bill.total_amount || 0)}</td></tr>
+                    <tr><td><strong>No. Tagihan:</strong></td><td>${payment.bill_number || '-'}</td></tr>
+                    <tr><td><strong>Pelanggan:</strong></td><td>${payment.customer_name || 'Unknown'}</td></tr>
+                    <tr><td><strong>No. Telepon:</strong></td><td>${payment.customer_phone || '-'}</td></tr>
+                    <tr><td><strong>Periode:</strong></td><td>${payment.period_month ? `${getMonthName(payment.period_month)} ${payment.period_year}` : '-'}</td></tr>
+                    <tr><td><strong>Total Tagihan:</strong></td><td>${formatRupiah(payment.total_amount || 0)}</td></tr>
                 </table>
             </div>
         </div>
-        
+
         ${payment.notes ? `
         <div class="mb-3">
             <h6 class="text-primary">Catatan</h6>
             <div class="alert alert-info">${payment.notes}</div>
         </div>` : ''}
-        
+
         ${payment.verification_notes ? `
         <div class="mb-3">
             <h6 class="text-primary">Catatan Verifikasi</h6>
             <div class="alert alert-secondary">${payment.verification_notes}</div>
         </div>` : ''}
-        
+
         <div class="row">
             <div class="col-md-6">
                 <h6 class="text-primary">Riwayat</h6>
                 <small class="text-muted">
-                    <div>Dibuat: ${formatDateTime(payment.created_at)} oleh ${payment.created_by?.name || 'System'}</div>
-                    ${payment.verified_at ? `<div>Diverifikasi: ${formatDateTime(payment.verified_at)} oleh ${payment.verified_by?.name || 'System'}</div>` : ''}
+                    <div>Dibuat: ${formatDateTime(payment.created_at)} oleh ${payment.created_by_name || 'System'}</div>
+                    ${payment.verified_at ? `<div>Diverifikasi: ${formatDateTime(payment.verified_at)} oleh ${payment.verified_by_name || 'System'}</div>` : ''}
                 </small>
             </div>
             ${payment.payment_proof_path ? `
@@ -1064,9 +847,9 @@ function displayPaymentDetail(payment) {
             </div>` : ''}
         </div>
     `;
-    
+
     document.getElementById('payment-detail-content').innerHTML = detailHtml;
-    
+
     // Setup action buttons
     const actionButtons = document.getElementById('payment-actions');
     if (payment.status === 'pending') {
@@ -1089,42 +872,53 @@ function openVerifyModal(paymentId) {
     modal.show();
 }
 
-// Submit payment verification (DUMMY IMPLEMENTATION)
-function submitVerification() {
+// Submit payment verification
+async function submitVerification() {
     const form = document.getElementById('verifyPaymentForm');
     const formData = new FormData(form);
     const paymentId = parseInt(formData.get('payment_id'));
     const status = formData.get('status');
     const notes = formData.get('verification_notes');
-    
+
     if (!status) {
         showToast('Pilih status verifikasi', 'error');
         return;
     }
-    
+
     showToast('Memproses verifikasi...', 'info');
-    
-    // Simulate API delay
-    setTimeout(() => {
-        // Find and update payment in dummy data
-        const paymentIndex = paymentData.findIndex(p => p.id === paymentId);
-        
-        if (paymentIndex !== -1) {
-            paymentData[paymentIndex].status = status;
-            paymentData[paymentIndex].verification_notes = notes;
-            paymentData[paymentIndex].verified_at = new Date().toISOString();
-            paymentData[paymentIndex].verified_by = {
-                name: 'Manager Keuangan (Current User)'
-            };
-            
-            showToast('Verifikasi pembayaran berhasil!', 'success');
-            bootstrap.Modal.getInstance(document.getElementById('verifyPaymentModal')).hide();
-            bootstrap.Modal.getInstance(document.getElementById('paymentDetailModal'))?.hide();
-            loadDummyPaymentHistory();
-        } else {
-            showToast('Gagal verifikasi: Data tidak ditemukan', 'error');
+
+    try {
+        const response = await fetch(`/api/payments/${paymentId}/verify`, {
+            method: 'POST',
+            headers: {
+                'Authorization': 'Bearer ' + localStorage.getItem('auth_token'),
+                'Accept': 'application/json',
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                status: status,
+                verification_notes: notes
+            })
+        });
+
+        if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.message || 'Failed to verify payment');
         }
-    }, 1000);
+
+        const result = await response.json();
+        showToast('Verifikasi pembayaran berhasil!', 'success');
+
+        // Close modals
+        bootstrap.Modal.getInstance(document.getElementById('verifyPaymentModal')).hide();
+        bootstrap.Modal.getInstance(document.getElementById('paymentDetailModal'))?.hide();
+
+        // Refresh payment history
+        loadPaymentHistory();
+    } catch (error) {
+        console.error('Error verifying payment:', error);
+        showToast('Gagal verifikasi pembayaran: ' + error.message, 'error');
+    }
 }
 
 // Filter payments
@@ -1135,14 +929,14 @@ function filterPayments() {
         date_from: document.getElementById('date-from').value,
         date_to: document.getElementById('date-to').value
     };
-    
+
     const searchTerm = document.getElementById('search-payment').value;
     if (searchTerm) {
         currentFilters.search = searchTerm;
     }
-    
+
     currentPage = 1;
-    loadDummyPaymentHistory();
+    loadPaymentHistory();
 }
 
 // Refresh payment history
@@ -1154,19 +948,8 @@ function refreshPaymentHistory() {
     document.getElementById('date-from').value = '';
     document.getElementById('date-to').value = '';
     document.getElementById('search-payment').value = '';
-    
-    loadDummyPaymentHistory();
-}
 
-// Update stats with dummy data
-function updateDummyStats(payments) {
-    const pendingCount = payments.filter(p => p.status === 'pending').length;
-    const verifiedCount = payments.filter(p => p.status === 'verified').length;
-    const rejectedCount = payments.filter(p => p.status === 'rejected').length;
-    
-    document.getElementById('pending-payments-count').textContent = pendingCount;
-    document.getElementById('verified-payments-count').textContent = verifiedCount;
-    document.getElementById('rejected-payments-count').textContent = rejectedCount;
+    loadPaymentHistory();
 }
 
 // Update pagination controls
@@ -1202,13 +985,29 @@ function updatePagination(paginationData) {
 // Change page
 function changePage(page) {
     currentPage = page;
-    loadDummyPaymentHistory();
+    loadPaymentHistory();
 }
 
-// Update stats (placeholder - would normally calculate from API data)
-function updateStats() {
-    // This would be calculated from actual API data
-    // For now, we'll keep the static values
+// Update stats from API data
+function updateStats(paginationData) {
+    // If we have pagination data with totals, use it
+    if (paginationData && paginationData.total_stats) {
+        const stats = paginationData.total_stats;
+        document.getElementById('pending-payments-count').textContent = stats.pending || 0;
+        document.getElementById('verified-payments-count').textContent = stats.verified || 0;
+        document.getElementById('rejected-payments-count').textContent = stats.rejected || 0;
+        return;
+    }
+
+    // Fallback: calculate from current page data (less accurate but better than nothing)
+    const payments = paymentData;
+    const pendingCount = payments.filter(p => p.status === 'pending').length;
+    const verifiedCount = payments.filter(p => p.status === 'verified').length;
+    const rejectedCount = payments.filter(p => p.status === 'rejected').length;
+
+    document.getElementById('pending-payments-count').textContent = pendingCount;
+    document.getElementById('verified-payments-count').textContent = verifiedCount;
+    document.getElementById('rejected-payments-count').textContent = rejectedCount;
 }
 
 // Utility Functions
@@ -1310,14 +1109,12 @@ function getStatusText(status) {
     return statuses[status] || status;
 }
 
-function getStatusColor(status) {
-    const colors = {
-        'pending': 'warning',
-        'sent': 'info',
-        'paid': 'success',
-        'overdue': 'danger'
-    };
-    return colors[status] || 'secondary';
+function getMonthName(month) {
+    const months = [
+        'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
+        'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'
+    ];
+    return months[month - 1] || month;
 }
 
 function viewPaymentProof(paymentId) {

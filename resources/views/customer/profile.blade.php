@@ -56,11 +56,10 @@
                     <h5 class="mb-1">{{ auth()->user()->name }}</h5>
                     <p class="text-muted mb-3">{{ auth()->user()->phone }}</p>
                     
-                    <!-- Avatar Upload Form (Hidden) -->
-                    <form id="avatarForm" action="{{ route('customer.profile.avatar') }}" method="POST" enctype="multipart/form-data">
-                        @csrf
-                        <input type="file" id="avatarInput" name="avatar" accept="image/*" class="d-none" onchange="previewAvatar(this)">
-                    </form>
+                    <!-- Avatar Upload (Disabled for now) -->
+                    <div class="text-center mb-3">
+                        <small class="text-muted">Upload avatar akan segera tersedia</small>
+                    </div>
 
                     <div class="row text-center">
                         <div class="col-6">
@@ -133,7 +132,7 @@
                     @endif
 
                     <!-- Profile Update Form -->
-                    <form action="{{ route('customer.profile.update') }}" method="POST" id="profileForm">
+                    <form action="{{ route('profile.update') }}" method="POST" id="profileForm">
                         @csrf
                         @method('PUT')
                         
@@ -361,7 +360,7 @@
                 </h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
-            <form action="{{ route('customer.profile.password') }}" method="POST" id="passwordForm">
+            <form action="{{ route('profile.update.password') }}" method="POST" id="passwordForm">
                 @csrf
                 @method('PUT')
                 <div class="modal-body">
